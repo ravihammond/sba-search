@@ -17,6 +17,7 @@ import torch
 import numpy as np
 
 import r2d2
+import sad_r2d2
 from create import create_envs
 import common_utils
 from supervised_model import SupervisedAgent
@@ -116,6 +117,7 @@ def parse_hydra_dict(lines):
 
 def get_train_config(weight_file):
     log = os.path.join(os.path.dirname(weight_file), "train.log")
+    print("log:", log)
     if not os.path.exists(log):
         return None
 
@@ -161,7 +163,7 @@ def load_agent(weight_file, overwrite):
 
     game = create_envs(
         1,
-        1,
+        0,
         cfg["num_player"],
         cfg["train_bomb"],
         cfg["max_len"],
@@ -194,6 +196,51 @@ def load_agent(weight_file, overwrite):
     load_weight(agent.online_net, weight_file, config["device"])
     agent.sync_target_with_online()
     return agent, cfg
+
+
+def load_sad_model(weight_file, device, multi_step=3):
+    print("loading sad model:", weight_file)
+    state_dict = torch.load(weight_file, map_location=device)
+    input_dim = state_dict["net.0.weight"].size()[1]
+    hid_dim = 512
+    output_dim = state_dict["fc_a.weight"].size()[0]
+    agent = sad_r2d2.SADAgent(
+            weight_file, 
+            False, 
+            multi_step, 
+            0.999, 
+            0.9, 
+            device,
+            input_dim, 
+            hid_dim, 
+            output_dim, 
+            2, 
+            5, 
+            False).to(device)
+    load_sad_weight(agent.online_net, weight_file, device)
+    return agent
+
+
+def load_sad_weight(model, weight_file, device):
+    state_dict = torch.load(weight_file, map_location=device)
+    source_state_dict = OrderedDict()
+    target_state_dict = model.state_dict()
+
+    for k, v in target_state_dict.items():
+        if k not in state_dict:
+            # print("warning: %s not loaded" % k)
+            state_dict[k] = v
+    for k in state_dict:
+        if k not in target_state_dict:
+            # print(target_state_dict.keys())
+            print("removing: %s not used" % k)
+            # state_dict.pop(k)
+        else:
+            source_state_dict[k] = state_dict[k]
+
+
+    model.load_state_dict(source_state_dict)
+    return
 
 
 def log_explore_ratio(games, expected_eps):

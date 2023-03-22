@@ -132,11 +132,11 @@ class R2D2Agent(torch.jit.ScriptModule):
         publ_s: torch.Tensor,
         legal_move: torch.Tensor,
         hid: Dict[str, torch.Tensor],
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
         adv, new_hid = self.online_net.act(priv_s, publ_s, hid)
         legal_adv = (1 + adv - adv.min()) * legal_move
         greedy_action = legal_adv.argmax(1).detach()
-        return greedy_action, new_hid
+        return greedy_action, new_hid, legal_adv
 
     @torch.jit.script_method
     def boltzmann_act(
@@ -164,9 +164,12 @@ class R2D2Agent(torch.jit.ScriptModule):
         output: {'a' : actions}, a long Tensor of shape
             [batchsize] or [batchsize, num_player]
         """
+        # print("act() r2d2.py=======")
         priv_s = obs["priv_s"]
         publ_s = obs["publ_s"]
         legal_move = obs["legal_move"]
+        convention_idx = obs["convention_idx"]
+
         if "eps" in obs:
             eps = obs["eps"].flatten(0, 1)
         else:
@@ -188,27 +191,45 @@ class R2D2Agent(torch.jit.ScriptModule):
                 priv_s, publ_s, legal_move, temp, hid
             )
             reply = {"prob": prob}
+            legal_act = prob
         else:
-            greedy_action, new_hid = self.greedy_act(priv_s, publ_s, legal_move, hid)
+            greedy_action, new_hid, legal_act = \
+                    self.greedy_act(priv_s, publ_s, legal_move, hid)
             reply = {}
 
+        random_action = legal_move.multinomial(1).squeeze(1)
+
+        rand = torch.rand(greedy_action.size(), device=greedy_action.device, dtype=torch.double)
+
         if self.greedy:
+            taking_exp_action = torch.tensor([0])
             action = greedy_action
         else:
-            random_action = legal_move.multinomial(1).squeeze(1)
-            rand = torch.rand(greedy_action.size(), device=greedy_action.device)
             assert rand.size() == eps.size()
-            rand = (rand < eps).float()
-            action = (greedy_action * (1 - rand) + random_action * rand).detach().long()
+            taking_exp_action = rand < eps
+            action = torch.where(taking_exp_action, random_action, greedy_action).detach()
 
         if self.vdn:
             action = action.view(bsize, num_player)
             greedy_action = greedy_action.view(bsize, num_player)
-            # rand = rand.view(bsize, num_player)
+            rand = rand.view(bsize, num_player)
 
         reply["a"] = action.detach().cpu()
         reply["h0"] = new_hid["h0"].detach().cpu()
         reply["c0"] = new_hid["c0"].detach().cpu()
+        reply["all_q"] = legal_act.detach().cpu()
+        reply["legal_moves"] = legal_move.detach().cpu()
+        reply["explore_a"] = taking_exp_action.detach().cpu()
+
+        size = torch.prod(torch.tensor(legal_move.shape))
+        ascending = torch.arange(0, size, legal_move.shape[1])
+        take_indices = reply["a"] + ascending
+        selected_action = torch.take(legal_move.detach().cpu(), take_indices)
+
+        # Check for illegal action, and raise exception if found.
+        if torch.any(selected_action == 0) == 1:
+            raise Exception("Found illegal action")
+
         return reply
 
     @torch.jit.script_method

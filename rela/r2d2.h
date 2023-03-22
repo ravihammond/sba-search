@@ -6,6 +6,9 @@
 //
 #pragma once
 
+#include <iostream>
+#include <stdio.h>
+
 #include "rela/tensor_dict.h"
 #include "rela/transition.h"
 

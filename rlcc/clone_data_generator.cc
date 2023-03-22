@@ -67,7 +67,8 @@ void DataGenLoop::mainLoop() {
             invColorPermutes_[i],
             false,     // hideAction
             trinary_,  // trinary for aux task
-            false);    // sad
+            false,     // sad
+            false);    // legacySad
         r2d2Buffers_[i].pushObs(obs);
         int action = -1;
         if (i == curPlayer) {

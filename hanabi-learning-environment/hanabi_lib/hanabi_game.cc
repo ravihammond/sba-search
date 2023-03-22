@@ -15,6 +15,8 @@
 #include "hanabi_game.h"
 
 #include "util.h"
+#include <stdio.h>
+#include <iostream>
 
 namespace hanabi_learning_env {
 
@@ -138,11 +140,12 @@ int HanabiGame::NumberCardInstances(int color, int rank) const {
 }
 
 int HanabiGame::GetSampledStartPlayer() const {
-  if (random_start_player_) {
-    std::uniform_int_distribution<std::mt19937::result_type> dist(
-        0, num_players_ - 1);
-    return dist(rng_);
-  }
+  //if (random_start_player_) {
+    //std::uniform_int_distribution<std::mt19937::result_type> dist(
+        //0, num_players_ - 1);
+    //return dist(rng_);
+  //}
+  //
   return 0;
 }
 

@@ -7,6 +7,8 @@
 #include "rlcc/r2d2_actor.h"
 #include "rlcc/utils.h"
 
+#define PR true
+
 void addHid(rela::TensorDict& to, rela::TensorDict& hid) {
   for (auto& kv : hid) {
     // hid: [num_layer, batch/num_player, dim]
@@ -190,7 +192,8 @@ void R2D2Actor::observeBeforeAct(const HanabiEnv& env) {
           invColorPermutes_[i],
           hideAction_,
           trinary_,
-          sad_));
+          sad_,
+          legacySad_));
     }
     input = rela::tensor_dict::stack(vObs, 0);
   } else {
@@ -202,7 +205,8 @@ void R2D2Actor::observeBeforeAct(const HanabiEnv& env) {
         invColorPermutes_[0],
         hideAction_,
         trinary_,
-        sad_);
+        sad_,
+        legacySad_);
   }
 
   // add features such as eps and temperature
@@ -326,7 +330,8 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
           partner->invColorPermutes_[0],
           partner->hideAction_,
           partner->trinary_,
-          partner->sad_);
+          partner->sad_,
+          partner->legacySad_);
       // add features such as eps and temperature
       partnerInput["eps"] = torch::tensor(partner->playerEps_);
       if (partner->playerTemp_.size() > 0) {
@@ -364,6 +369,9 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
     }
   }
 
+  if(PR)printf("Playing move: %s%s\n", move.ToString().c_str(),
+    legacySad_ ? " (SAD)" : "");
+
   env.step(move);
 }
 
@@ -391,7 +399,8 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
       invColorPermutes_[0],
       hideAction_,
       trinary_,
-      sad_);
+      sad_,
+      legacySad_);
 
   // the hidden is new, so we are good
   addHid(fictInput, hidden_);

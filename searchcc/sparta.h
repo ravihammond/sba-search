@@ -14,11 +14,17 @@ namespace search {
 
 class SpartaActor {
  public:
-  SpartaActor(int index, std::shared_ptr<rela::BatchRunner> bpRunner, int seed)
+  SpartaActor(
+      int index, 
+      std::shared_ptr<rela::BatchRunner> bpRunner, 
+      int seed,
+      bool legacySad,
+      std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer)
       : index(index)
       , rng_(seed)
-      , prevModel_(index)
-      , model_(index) {
+      , prevModel_(index, legacySad, replayBuffer)
+      , model_(index, legacySad, replayBuffer) 
+      , legacySad_(legacySad) {
     assert(bpRunner != nullptr);
     model_.setBpModel(bpRunner, getH0(*bpRunner, 1));
   }
@@ -39,7 +45,7 @@ class SpartaActor {
     std::cout << "prev player: " << prevPlayer << std::endl;
 
     auto [obs, lastMove, cardCount, myHand] =
-        observeForSearch(env.state(), index, hideAction, false);
+        observeForSearch(env.state(), index, hideAction, false, legacySad_);
 
     search::updateBelief(
         prevState_,
@@ -93,6 +99,8 @@ class SpartaActor {
   std::unique_ptr<hle::HanabiState> prevState_ = nullptr;
 
   int callOrder_ = 0;
+
+  bool legacySad_;
 };
 
 }  // namespace search

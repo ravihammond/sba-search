@@ -21,13 +21,19 @@ struct JointAction {
 
 class FinesseActor {
  public:
-  FinesseActor(int index, std::vector<std::shared_ptr<rela::BatchRunner>> bps, int seed)
+  FinesseActor(
+      int index, 
+      std::vector<std::shared_ptr<rela::BatchRunner>> bps, 
+      int seed,
+      bool legacySad,
+      std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer)
       : index_(index)
       , bp_(bps[0])
       , bpGpus_(bps)
-      , prevModel_(index)
-      , model_(index)
-      , rng_(seed) {
+      , prevModel_(index, legacySad, replayBuffer)
+      , model_(index, legacySad, replayBuffer) 
+      , rng_(seed)
+      , legacySad_(legacySad) {
     model_.setBpModel(bp_, getH0(*bp_, 1));
   }
 
@@ -50,7 +56,7 @@ class FinesseActor {
 
     // always use public belief
     auto [obs, lastMove, cardCount, myHand] =
-        observeForSearch(state, index_, false, true);
+        observeForSearch(state, index_, false, true, legacySad_);
 
     search::updateBelief(
         prevState_,
@@ -68,7 +74,8 @@ class FinesseActor {
       skipCounterfactual_ = false;
     }
 
-    auto privCardCount = std::get<2>(observeForSearch(state, index_, false, false));
+    auto privCardCount = std::get<2>(observeForSearch(
+          state, index_, false, false, legacySad_));
     privHandDist_ = search::publicToPrivate(publHandDist_, privCardCount);
     std::cout << "from public to private, " << publHandDist_.size()
               << " -> " << privHandDist_.size() << std::endl;
@@ -156,5 +163,7 @@ class FinesseActor {
   std::vector<hle::HanabiMove> finesseMove_;
   bool skipCounterfactual_ = false;
   bool followBp_ = false;
+
+  bool legacySad_;
 };
 }

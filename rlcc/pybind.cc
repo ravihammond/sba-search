@@ -16,9 +16,9 @@
 #include "rlcc/clone_data_generator.h"
 #include "rlcc/hanabi_env.h"
 #include "rlcc/thread_loop.h"
-#include "searchcc/sparta.h"
+//#include "searchcc/sparta.h"
 #include "searchcc/rl_search.h"
-#include "searchcc/finesse.h"
+//#include "searchcc/finesse.h"
 
 namespace py = pybind11;
 using namespace hanabi_learning_env;
@@ -81,20 +81,26 @@ PYBIND11_MODULE(hanalearn, m) {
            // if replay buffer is None, then all params below are not used
            int,       // multiStep,
            int,       // seqLen,
-           float>())  // gamma
+           float,     // gamma
+           bool>())   // legacySad
       .def(py::init<
            std::shared_ptr<rela::BatchRunner>,
            int,      // numPlayer
            int,      // playerIdx
            bool,     // vdn
            bool,     // sad
-           bool>())  // hideAction
+           bool,     // hideAction
+           bool>())  // legacySad
       .def("set_partners", &R2D2Actor::setPartners)
       .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
       .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate)
       .def("get_played_card_info", &R2D2Actor::getPlayedCardInfo);
 
-  m.def("observe", py::overload_cast<const hle::HanabiState&, int, bool>(&observe));
+  m.def("observe", py::overload_cast<
+      const hle::HanabiState&, 
+      int, 
+      bool,
+      bool>(&observe));
 
   m.def(
       "observe_op",
@@ -104,6 +110,7 @@ PYBIND11_MODULE(hanalearn, m) {
           bool,
           const std::vector<int>&,
           const std::vector<int>&,
+          bool,
           bool,
           bool,
           bool>(&observe));
@@ -127,19 +134,25 @@ PYBIND11_MODULE(hanalearn, m) {
       .def("terminal", &search::GameSimulator::terminal)
       .def("get_score", &search::GameSimulator::score);
 
-  py::class_<search::SpartaActor, std::shared_ptr<search::SpartaActor>>(
-      m, "SpartaActor")
-      .def(py::init<int, std::shared_ptr<rela::BatchRunner>, int>())
-      .def("set_partners", &search::SpartaActor::setPartners)
-      .def("update_belief", &search::SpartaActor::updateBelief)
-      .def("observe", &search::SpartaActor::observe)
-      .def("decide_action",  &search::SpartaActor::decideAction)
-      .def("sparta_search",  &search::SpartaActor::spartaSearch);
+  //py::class_<search::SpartaActor, std::shared_ptr<search::SpartaActor>>(
+      //m, "SpartaActor")
+      //.def(py::init<
+          //int, 
+          //std::shared_ptr<rela::BatchRunner>, 
+          //int,
+          //bool,
+          //std::shared_ptr<rela::RNNPrioritizedReplay>>())
+      //.def("set_partners", &search::SpartaActor::setPartners)
+      //.def("update_belief", &search::SpartaActor::updateBelief)
+      //.def("observe", &search::SpartaActor::observe)
+      //.def("decide_action",  &search::SpartaActor::decideAction)
+      //.def("sparta_search",  &search::SpartaActor::spartaSearch);
 
   py::class_<search::RLSearchActor, std::shared_ptr<search::RLSearchActor>>(
       m, "RLSearchActor")
       .def(py::init<
            int,
+           std::shared_ptr<rela::BatchRunner>,
            std::shared_ptr<rela::BatchRunner>,
            std::shared_ptr<rela::BatchRunner>,
            std::shared_ptr<rela::BatchRunner>,
@@ -149,11 +162,16 @@ PYBIND11_MODULE(hanalearn, m) {
            const std::vector<float>&,
            int,
            float,
-           int>())
+           int,
+           bool,
+           bool,
+           std::shared_ptr<rela::RNNPrioritizedReplay>,
+           bool>())
       .def("set_compute_config", &search::RLSearchActor::setComputeConfig)
       .def("set_partner", &search::RLSearchActor::setPartner)
       .def("update_belief", &search::RLSearchActor::updateBelief)
       .def("update_belief_hid", &search::RLSearchActor::updateBeliefHid)
+      .def("initialise", &search::RLSearchActor::initialise)
       .def("observe", &search::RLSearchActor::observe)
       .def("decide_action", &search::RLSearchActor::decideAction)
       .def("reset_rl_rnn", &search::RLSearchActor::resetRlRnn)
@@ -165,7 +183,10 @@ PYBIND11_MODULE(hanalearn, m) {
       .def("get_belief_hidden", &search::RLSearchActor::getBeliefHidden)
       .def("get_model_belief_hidden", &search::RLSearchActor::getModelBeliefHidden)
       .def("stop_data_generation", &search::RLSearchActor::stopDataGeneration)
-      .def("sparta_search", &search::RLSearchActor::spartaSearch);
+      .def("sparta_search", &search::RLSearchActor::spartaSearch)
+      .def("observe_after_act", &search::RLSearchActor::observeAfterAct)
+      .def("push_episode_to_replay_buffer", 
+          &search::RLSearchActor::pushEpisodeToReplayBuffer);
 
   // m.def("observe_for_search", &observeForSearch);
 
@@ -347,11 +368,16 @@ PYBIND11_MODULE(hanalearn, m) {
       .def("shape", &CanonicalObservationEncoder::Shape)
       .def("encode", &CanonicalObservationEncoder::Encode);
 
-  py::class_<search::FinesseActor, std::shared_ptr<search::FinesseActor>>(m, "FinesseActor")
-      .def(py::init<int, std::vector<std::shared_ptr<rela::BatchRunner>>, int>())
-      .def("set_partners", &search::FinesseActor::setPartners)
-      .def("update_belief", &search::FinesseActor::updateBelief)
-      .def("finesse", &search::FinesseActor::finesse)
-      .def("observe", &search::FinesseActor::observe)
-      .def("decide_action", &search::FinesseActor::decideAction);
+  //py::class_<search::FinesseActor, std::shared_ptr<search::FinesseActor>>(m, "FinesseActor")
+      //.def(py::init<
+          //int, 
+          //std::vector<std::shared_ptr<rela::BatchRunner>>, 
+          //int,
+          //bool,
+          //std::shared_ptr<rela::RNNPrioritizedReplay>>())
+      //.def("set_partners", &search::FinesseActor::setPartners)
+      //.def("update_belief", &search::FinesseActor::updateBelief)
+      //.def("finesse", &search::FinesseActor::finesse)
+      //.def("observe", &search::FinesseActor::observe)
+      //.def("decide_action", &search::FinesseActor::decideAction);
 }

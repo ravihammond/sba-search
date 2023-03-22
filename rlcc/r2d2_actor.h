@@ -30,7 +30,8 @@ class R2D2Actor {
       // if replay buffer is None, then all params below are not used
       int multiStep,
       int seqLen,
-      float gamma)
+      float gamma,
+      bool legacySad)
       : runner_(std::move(runner))
       , rng_(seed)
       , numPlayer_(numPlayer)
@@ -48,7 +49,8 @@ class R2D2Actor {
       , colorPermutes_(batchsize_)
       , invColorPermutes_(batchsize_)
       , replayBuffer_(std::move(replayBuffer))
-      , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(multiStep, seqLen, gamma)) {
+      , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(multiStep, seqLen, gamma)) 
+      , legacySad_(legacySad) {
   }
 
   // simpler constructor for eval mode
@@ -58,7 +60,8 @@ class R2D2Actor {
       int playerIdx,
       bool vdn,
       bool sad,
-      bool hideAction)
+      bool hideAction,
+      bool legacySad)
       : runner_(std::move(runner))
       , rng_(1)  // not used in eval mode
       , numPlayer_(numPlayer)
@@ -74,7 +77,8 @@ class R2D2Actor {
       , colorPermutes_(batchsize_)
       , invColorPermutes_(batchsize_)
       , replayBuffer_(nullptr)
-      , r2d2Buffer_(nullptr) {
+      , r2d2Buffer_(nullptr) 
+      , legacySad_(legacySad) {
   }
 
   void setPartners(std::vector<std::shared_ptr<R2D2Actor>> partners) {
@@ -174,4 +178,6 @@ class R2D2Actor {
   int colorKnown_ = 0;
   int rankKnown_ = 0;
   int bothKnown_ = 0;
+
+  bool legacySad_;
 };

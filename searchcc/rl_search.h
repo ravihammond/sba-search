@@ -6,6 +6,9 @@
 //
 #pragma once
 
+#include <stdio.h>
+#include <iostream>
+
 #include "rela/context.h"
 #include "rela/prioritized_replay.h"
 
@@ -21,6 +24,7 @@ class RLSearchActor {
   RLSearchActor(
       int index,
       std::shared_ptr<rela::BatchRunner> bpRunner,
+      std::shared_ptr<rela::BatchRunner> bpPartnerRunner,
       std::shared_ptr<rela::BatchRunner> rlRunner,
       std::shared_ptr<rela::BatchRunner> beliefRunner,
       int num_samples,
@@ -29,7 +33,11 @@ class RLSearchActor {
       const std::vector<float>& epsList,
       int nStep,
       float gamma,
-      int seed)
+      int seed,
+      bool legacySad,
+      bool legacySadPartner,
+      std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
+      bool testPartner)
       : index(index)
       , beliefRunner_(beliefRunner)
       , num_samples_(num_samples)
@@ -39,10 +47,16 @@ class RLSearchActor {
       , nStep_(nStep)
       , gamma_(gamma)
       , rng_(seed)
-      , prevModel_(index)
-      , model_(index) {
+      , prevModel_(index, legacySad, legacySadPartner, replayBuffer, testPartner)
+      , model_(index, legacySad, legacySadPartner, replayBuffer, testPartner) 
+      , legacySad_(legacySad) 
+      , legacySadPartner_(legacySadPartner) 
+      , testPartner_(testPartner) {
     assert(bpRunner != nullptr);
     model_.setBpModel(bpRunner, getH0(*bpRunner, 1));
+    if (bpPartnerRunner != nullptr) {
+      model_.setBpPartnerModel(bpPartnerRunner, getH0(*bpPartnerRunner, 1));
+    }
     if (rlRunner != nullptr) {
       model_.setRlModel(rlRunner, getH0(*rlRunner, 1));
     }
@@ -79,12 +93,14 @@ class RLSearchActor {
     return model_.getRlStep();
   }
 
-  void updateBelief(const GameSimulator& env) {
+  void updateBelief(const GameSimulator& env, bool skipCounterfactual) {
     assert(callOrder_ == 0);
     ++callOrder_;
 
     auto [obs, lastMove, cardCount, myHand] =
-        observeForSearch(env.state(), index, hideAction, publBelief_);
+        observeForSearch(env.state(), index, 
+            hideAction, publBelief_, legacySad_);
+
     search::updateBelief(
         prevState_,
         env.game(),
@@ -94,13 +110,15 @@ class RLSearchActor {
         partner_->prevModel_,
         index,
         handDist_,
-        numThread_);
+        numThread_,
+        skipCounterfactual);
   }
 
   void updateBeliefHid(const GameSimulator& env) {
 
     auto [obs, lastMove, cardCount, myHand] =
-        observeForSearch(env.state(), index, hideAction, publBelief_);
+        observeForSearch(env.state(), index, 
+            hideAction, publBelief_, legacySad_);
     applyModel(obs, *beliefRunner_, beliefRnnHid_, "observe");
     model_.setBeliefHid(beliefRnnHid_);
   }
@@ -121,12 +139,16 @@ class RLSearchActor {
 
   void stopDataGeneration() const;
 
+  void initialise() {
+    model_.initialise(true);
+  }
+
   void observe(const GameSimulator& env) {
     // assert(callOrder_ == 1);
     ++callOrder_;
 
     const auto& state = env.state();
-    model_.observeBeforeAct(env, 0);
+    model_.observeBeforeAct(env, 0, true);
 
     if (prevState_ == nullptr) {
       prevState_ = std::make_unique<hle::HanabiState>(state);
@@ -140,7 +162,7 @@ class RLSearchActor {
     callOrder_ = 0;
 
     prevModel_ = model_;  // this line can only be in decide action
-    return model_.decideAction(env, true);
+    return model_.decideAction(env, true, true);
   }
 
   // should be called after decideAction?
@@ -154,6 +176,14 @@ class RLSearchActor {
       int seed,
       std::vector<std::vector<std::vector<hle::HanabiCardValue>>> simHands,
       bool useSimHands) const;
+
+  void observeAfterAct(const GameSimulator& env) {
+    model_.observeAfterAct(env, true);
+  }
+
+  void pushEpisodeToReplayBuffer() {
+    model_.pushEpisodeToReplayBuffer();
+  }
 
   const int index;
   const bool hideAction = false;
@@ -203,6 +233,11 @@ class RLSearchActor {
   // related to parallel simulation
   mutable std::unique_ptr<rela::Context> context_;
   int callOrder_ = 0;
+
+  bool legacySad_;
+  bool legacySadPartner_;
+
+  bool testPartner_;
 };
 
 }  // namespace search

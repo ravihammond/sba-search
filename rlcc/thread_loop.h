@@ -6,8 +6,13 @@
 //
 #pragma once
 
+#include <stdio.h>
+#include <iostream>
+
 #include "rela/thread_loop.h"
 #include "rlcc/r2d2_actor.h"
+
+#define PR true
 
 class HanabiThreadLoop : public rela::ThreadLoop {
  public:
@@ -23,7 +28,10 @@ class HanabiThreadLoop : public rela::ThreadLoop {
   }
 
   virtual void mainLoop() override {
+    int game_turn = 0;
     while (!terminated()) {
+      if(PR)printf("\n=======================================\n");
+      if(PR)printf("Game Turn: %d\n", game_turn);
       // go over each envs in sequential order
       // call in seperate for-loops to maximize parallization
       for (size_t i = 0; i < envs_.size(); ++i) {
@@ -47,14 +55,27 @@ class HanabiThreadLoop : public rela::ThreadLoop {
 
           envs_[i]->reset();
           for (size_t j = 0; j < actors.size(); ++j) {
+            if(PR)printf("\n[player %ld resetting]\n", j);
             actors[j]->reset(*envs_[i]);
           }
         }
+      }
 
+      if(PR)printf("\n%s\n", envs_[0]->getHleState().ToString().c_str());
+
+      if(PR)printf("\n----\n");
+
+      for (size_t i = 0; i < envs_.size(); ++i) {
+        auto& actors = actors_[i];
+        int curPlayer = envs_[i]->getCurrentPlayer();
         for (size_t j = 0; j < actors.size(); ++j) {
+          if(PR) printf("\n[player %ld observe before acting]%s\n", j,
+              curPlayer == (int)j ? " <-- current player" : "");
           actors[j]->observeBeforeAct(*envs_[i]);
         }
       }
+
+      if(PR)printf("\n----\n");
 
       for (size_t i = 0; i < envs_.size(); ++i) {
         if (done_[i] == 1) {
@@ -64,31 +85,45 @@ class HanabiThreadLoop : public rela::ThreadLoop {
         auto& actors = actors_[i];
         int curPlayer = envs_[i]->getCurrentPlayer();
         for (size_t j = 0; j < actors.size(); ++j) {
+          if(PR)printf("\n[player %ld acting]%s\n", j, 
+              curPlayer == (int)j ? " <-- current player" : "");
           actors[j]->act(*envs_[i], curPlayer);
         }
       }
 
+      if(PR)printf("\n----\n");
+
       for (size_t i = 0; i < envs_.size(); ++i) {
         if (done_[i] == 1) {
           continue;
         }
 
         auto& actors = actors_[i];
+        int curPlayer = envs_[i]->getCurrentPlayer();
         for (size_t j = 0; j < actors.size(); ++j) {
+          if(PR)printf("\n[player %ld fictious acting]%s\n", j,
+              curPlayer == (int)j ? " <-- current player" : "");
           actors[j]->fictAct(*envs_[i]);
         }
       }
 
+      if(PR)printf("\n----\n");
+
       for (size_t i = 0; i < envs_.size(); ++i) {
         if (done_[i] == 1) {
           continue;
         }
 
         auto& actors = actors_[i];
+        int curPlayer = envs_[i]->getCurrentPlayer();
         for (size_t j = 0; j < actors.size(); ++j) {
+          if(PR)printf("\n[player %ld observe after acting]%s\n", j,
+              curPlayer == (int)j ? " <-- current player" : "");
           actors[j]->observeAfterAct(*envs_[i]);
         }
       }
+
+      game_turn = envs_[0]->numStep();
     }
   }
 

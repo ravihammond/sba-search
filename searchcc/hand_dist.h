@@ -96,7 +96,7 @@ void updateBelief(
     int myIndex,
     HandDistribution& handDist,
     int numThread,
-    bool skipCounterfactual = false);
+    bool skipCounterfactual);
 
 HandDistribution publicToPrivate(
     const HandDistribution& handDist, const std::vector<int> cardCount);

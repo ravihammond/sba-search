@@ -30,7 +30,8 @@ inline rela::TensorDict splitPrivatePublic(
   // remove my hand, should be zero anyway
   std::vector<float> vPriv(feat.begin() + bitsPerHand, feat.end());
   // remove all private observation
-  std::vector<float> vPubl(feat.begin() + bitsPerHand * game.NumPlayers(), feat.end());
+  std::vector<float> vPubl(
+      feat.begin() + bitsPerHand * game.NumPlayers(), feat.end());
   return {{"priv_s", torch::tensor(vPriv)}, {"publ_s", torch::tensor(vPubl)}};
 }
 
@@ -60,10 +61,14 @@ rela::TensorDict observe(
     const std::vector<int>& invColorPermute,
     bool hideAction,
     bool trinary,
-    bool sad);
+    bool sad,
+    bool legacySad);
 
 inline rela::TensorDict observe(
-    const hle::HanabiState& state, int playerIdx, bool hideAction) {
+    const hle::HanabiState& state, 
+    int playerIdx, 
+    bool hideAction, 
+    bool legacySad) {
   return observe(
       state,
       playerIdx,
@@ -72,12 +77,21 @@ inline rela::TensorDict observe(
       std::vector<int>(),
       hideAction,
       true,
-      false);
+      legacySad,
+      legacySad);
 }
 
 inline rela::TensorDict observeSAD(const hle::HanabiState& state, int playerIdx) {
   return observe(
-      state, playerIdx, false, std::vector<int>(), std::vector<int>(), false, true, true);
+      state, 
+      playerIdx, 
+      false, 
+      std::vector<int>(), 
+      std::vector<int>(), 
+      false, 
+      true, 
+      true,
+      false);
 }
 
 inline std::unique_ptr<hle::HanabiHistoryItem> getLastNonDealMove(
@@ -110,9 +124,13 @@ inline std::tuple<
     std::vector<int>,
     hle::HanabiHand>
 observeForSearch(
-    const hle::HanabiState& state, int playerIdx, bool hideAction, bool publCount) {
+    const hle::HanabiState& state, 
+    int playerIdx, 
+    bool hideAction, 
+    bool publCount,
+    bool legacySad) {
   assert(!state.IsTerminal());
-  auto feat = ::observe(state, playerIdx, hideAction);
+  auto feat = ::observe(state, playerIdx, hideAction, legacySad);
   auto obs = hle::HanabiObservation(state, playerIdx, false);
   auto lastMove = getLastNonDealMove(obs.LastMoves());
   auto cardCount = hle::ComputeCardCount(
@@ -161,3 +179,4 @@ rela::TensorDict applyModel(
 
 std::vector<std::vector<float>> extractPerCardBelief(
     const std::vector<float>& encoding, const hle::HanabiGame& game, const int handSize);
+

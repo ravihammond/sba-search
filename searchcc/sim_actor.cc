@@ -19,7 +19,7 @@ void SimulationActor::observeBeforeAct(const GameSimulator& env) {
   }
 
   rela::TensorDict feat;
-  model_.observeBeforeAct(env, eps_, &feat);
+  model_.observeBeforeAct(env, eps_, false, &feat);
   r2d2Buffer_->pushObs(feat);
 }
 
@@ -32,7 +32,7 @@ int SimulationActor::decideAction(const GameSimulator& env) {
   }
 
   rela::TensorDict action;
-  auto aid = model_.decideAction(env, false, &action);
+  auto aid = model_.decideAction(env, false, false, &action);
   r2d2Buffer_->pushAction(action);
   return aid;
 }

@@ -39,6 +39,7 @@ PYBIND11_MODULE(rela, m) {
       .def("size", &RNNPrioritizedReplay::size)
       .def("num_add", &RNNPrioritizedReplay::numAdd)
       .def("sample", &RNNPrioritizedReplay::sample)
+      .def("sample_from_list_split", &RNNPrioritizedReplay::sampleFromListSplit)
       .def("update_priority", &RNNPrioritizedReplay::updatePriority)
       .def("get", &RNNPrioritizedReplay::get);
 

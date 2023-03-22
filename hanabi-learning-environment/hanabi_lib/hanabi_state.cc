@@ -11,13 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "hanabi_state.h"
-
 #include <algorithm>
 #include <cassert>
 #include <numeric>
+#include <stdio.h>
+#include <iostream>
 
+#include "hanabi_state.h"
 #include "util.h"
 
 namespace hanabi_learning_env {
@@ -102,7 +102,8 @@ HanabiState::HanabiState(const HanabiGame* parent_game, int start_player)
       information_tokens_(parent_game->MaxInformationTokens()),
       life_tokens_(parent_game->MaxLifeTokens()),
       fireworks_(parent_game->NumColors(), 0),
-      turns_to_play_(parent_game->NumPlayers()) {}
+      turns_to_play_(parent_game->NumPlayers()) {
+}
 
 void HanabiState::AdvanceToNextPlayer() {
   if (!deck_.Empty() && PlayerToDeal() >= 0) {

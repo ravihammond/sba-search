@@ -4,6 +4,8 @@
 // This source code is licensed under the license found in the
 // LICENSE file in the root directory of this source tree.
 //
+#include <stdio.h>
+#include <iostream>
 #include <future>
 
 #include "searchcc/game_sim.h"
@@ -218,7 +220,6 @@ void HandDistribution::filterMePlayDiscard(
 
 void HandDistribution::filterWithCardKnowledge(const hle::HanabiHand& hand) {
   const auto& ck = hand.Knowledge();
-
   std::vector<std::vector<hle::HanabiCardValue>> newHands;
   std::vector<int> newOccurances;
   int64_t newSum = 0;
@@ -311,6 +312,7 @@ void HandDistribution::filterCounterfactual(
   allHands_ = std::move(newHands);
   numOccurances_ = std::move(newOccurances);
   sumOccurance_ = newSum;
+
 }
 
 std::vector<std::vector<hle::HanabiCardValue>> HandDistribution::sampleHands(

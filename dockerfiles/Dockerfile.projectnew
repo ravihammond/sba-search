@@ -1,0 +1,36 @@
+# ===== DEV =====
+#FROM binary-tools-setup AS dev
+FROM ravihammond/cuda-conda AS dev
+
+RUN git config --global --add safe.directory /app
+
+WORKDIR /app
+
+ENTRYPOINT ["/bin/bash", "-c"]
+
+
+# ===== BUILDER =====
+FROM ravihammond/cuda-conda AS builder
+
+COPY cpp/ /app/cpp/
+WORKDIR /app/build
+RUN cmake ../cpp && make -j10
+
+
+# ===== PROD =====
+FROM ravihammond/cuda-conda AS prod
+
+COPY --from=builder /app/build /app/build
+COPY /pyhanabi /app/pyhanabi/
+COPY /training_models /app/training_models/
+
+COPY resolv.conf resolv.conf
+RUN touch /etc/resolv.conf
+
+RUN git config --global --add safe.directory /app
+
+WORKDIR /app/pyhanabi
+
+RUN chmod +x scripts/*
+
+ENTRYPOINT ["scripts/run.sh"]

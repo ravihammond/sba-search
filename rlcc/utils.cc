@@ -4,9 +4,12 @@
 // This source code is licensed under the license found in the
 // LICENSE file in the root directory of this source tree.
 //
+#include <stdio.h>
 #include "rlcc/utils.h"
 
 #include "hanabi-learning-environment/hanabi_lib/canonical_encoders.h"
+
+using namespace std;
 
 // return reward, terminal
 std::tuple<float, bool> applyMove(
@@ -39,14 +42,22 @@ rela::TensorDict observe(
     const std::vector<int>& invColorPermute,
     bool hideAction,
     bool trinary,
-    bool sad) {
+    bool sad,
+    bool legacySad) {
+
+  int showOwnCards = true;
+  if (legacySad) {
+    showOwnCards = false;
+  }
+
   const auto& game = *(state.ParentGame());
-  auto obs = hle::HanabiObservation(state, playerIdx, true);
+  auto obs = hle::HanabiObservation(state, playerIdx, showOwnCards);
   auto encoder = hle::CanonicalObservationEncoder(&game);
 
   std::vector<float> vS = encoder.Encode(
       obs,
-      true,  // splitPrivatePulic/convertSad will mask out private hand
+      showOwnCards,
+      // field
       std::vector<int>(),  // shuffle card
       shuffleColor,
       colorPermute,
@@ -58,26 +69,45 @@ rela::TensorDict observe(
     feat = splitPrivatePublic(vS, game);
   } else {
     // only for evaluation
-    auto vA =
-        encoder.EncodeLastAction(obs, std::vector<int>(), shuffleColor, colorPermute);
-    feat = convertSad(vS, vA, game);
+    auto vA = encoder.EncodeLastAction(obs, 
+        std::vector<int>(), shuffleColor, colorPermute);
+    if (legacySad) {
+      vS.insert(vS.end(), vA.begin(), vA.end());
+      feat = {{"priv_s", torch::tensor(vS)}};
+    } else {
+      feat = convertSad(vS, vA, game);
+    }
   }
 
-  if (trinary) {
-    auto vOwnHand = encoder.EncodeOwnHandTrinary(obs);
-    feat["own_hand"] = torch::tensor(vOwnHand);
-  } else {
-    auto vOwnHand = encoder.EncodeOwnHand(obs, shuffleColor, colorPermute);
+  auto obsCheat = hle::HanabiObservation(state, playerIdx, true);
+
+  if (trinary || legacySad) {
+    auto vOwnHandTrinary = encoder.EncodeOwnHandTrinary(obsCheat);
+    feat["own_hand"] = torch::tensor(vOwnHandTrinary);
+
+    auto vOwnHand = encoder.EncodeOwnHand(obsCheat, shuffleColor, colorPermute);
     std::vector<float> vOwnHandARIn(vOwnHand.size(), 0);
     int end = (game.HandSize() - 1) * game.NumColors() * game.NumRanks();
     std::copy(
         vOwnHand.begin(),
         vOwnHand.begin() + end,
         vOwnHandARIn.begin() + game.NumColors() * game.NumRanks());
-    feat["own_hand"] = torch::tensor(vOwnHand);
+    feat["own_hand_ar"] = torch::tensor(vOwnHand);
+  } 
+  if (!trinary || legacySad) {
+    auto vOwnHand = encoder.EncodeOwnHand(obsCheat, shuffleColor, colorPermute);
+    std::vector<float> vOwnHandARIn(vOwnHand.size(), 0);
+    int end = (game.HandSize() - 1) * game.NumColors() * game.NumRanks();
+    std::copy(
+        vOwnHand.begin(),
+        vOwnHand.begin() + end,
+        vOwnHandARIn.begin() + game.NumColors() * game.NumRanks());
+    string ownHandStr = "own_hand";
+    if (legacySad) ownHandStr = "own_hand_ar";
+    feat[ownHandStr] = torch::tensor(vOwnHand);
     feat["own_hand_ar_in"] = torch::tensor(vOwnHandARIn);
     auto privARV0 =
-        encoder.EncodeARV0Belief(obs, std::vector<int>(), shuffleColor, colorPermute);
+      encoder.EncodeARV0Belief(obsCheat, std::vector<int>(), shuffleColor, colorPermute);
     feat["priv_ar_v0"] = torch::tensor(privARV0);
   }
 
@@ -98,6 +128,7 @@ rela::TensorDict observe(
   }
 
   feat["legal_move"] = torch::tensor(vLegalMove);
+
   return feat;
 }
 
