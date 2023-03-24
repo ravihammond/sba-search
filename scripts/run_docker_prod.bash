@@ -8,6 +8,6 @@ docker run --rm -it\
     --volume=${GCLOUD_PATH}:/gcloud_creds.json:rw \
     --env GOOGLE_APPLICATION_CREDENTIALS=/gcloud_creds.json \
     --env WANDB_TOKEN=$(cat keys/wandb_api_key.txt) \
-    ravihammond/hanabi-project:prod \
+    ravihammond/hanabi-project:prod-search \
     scripts/$(basename -- $1) \
     $2

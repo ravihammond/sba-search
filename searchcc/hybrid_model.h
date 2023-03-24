@@ -189,6 +189,10 @@ class HybridModel {
   void observeAfterAct(const GameSimulator& env, bool testActing = false);
   void pushEpisodeToReplayBuffer();
 
+  std::unordered_map<std::string, std::string> getChosenMoves() {
+    return chosenMoves_;
+  }
+
   const bool hideAction = false;
   const int index;
 
@@ -216,5 +220,7 @@ class HybridModel {
   std::shared_ptr<rela::R2D2Buffer> r2d2Buffer_;
 
   bool testPartner_;
+
+  std::unordered_map<std::string, std::string> chosenMoves_;
 };
 }  // namespace search

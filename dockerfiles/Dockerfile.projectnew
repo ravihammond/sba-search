@@ -1,5 +1,4 @@
 # ===== DEV =====
-#FROM binary-tools-setup AS dev
 FROM ravihammond/cuda-conda AS dev
 
 RUN git config --global --add safe.directory /app
@@ -12,17 +11,26 @@ ENTRYPOINT ["/bin/bash", "-c"]
 # ===== BUILDER =====
 FROM ravihammond/cuda-conda AS builder
 
-COPY cpp/ /app/cpp/
+WORKDIR /app
+
+COPY CMakeLists.txt CMakeLists.txt
+COPY hanabi-learning-environment hanabi-learning-environment
+COPY rela rela
+COPY rlcc rlcc
+COPY third_party third_party
+COPY searchcc searchcc
+COPY get_pybind_flags.py get_pybind_flags.py
+
 WORKDIR /app/build
-RUN cmake ../cpp && make -j10
+RUN cmake ..; make -j10
 
 
 # ===== PROD =====
-FROM ravihammond/cuda-conda AS prod
+FROM ravihammond/cuda-conda AS prod-search
 
 COPY --from=builder /app/build /app/build
 COPY /pyhanabi /app/pyhanabi/
-COPY /training_models /app/training_models/
+COPY /models/ /app/models/
 
 COPY resolv.conf resolv.conf
 RUN touch /etc/resolv.conf

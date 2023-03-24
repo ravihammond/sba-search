@@ -185,6 +185,10 @@ class RLSearchActor {
     model_.pushEpisodeToReplayBuffer();
   }
 
+  std::unordered_map<std::string, std::string> getChosenMoves() {
+    return model_.getChosenMoves();
+  }
+
   const int index;
   const bool hideAction = false;
 

@@ -186,7 +186,8 @@ PYBIND11_MODULE(hanalearn, m) {
       .def("sparta_search", &search::RLSearchActor::spartaSearch)
       .def("observe_after_act", &search::RLSearchActor::observeAfterAct)
       .def("push_episode_to_replay_buffer", 
-          &search::RLSearchActor::pushEpisodeToReplayBuffer);
+          &search::RLSearchActor::pushEpisodeToReplayBuffer)
+      .def("get_chosen_moves", &search::RLSearchActor::getChosenMoves);
 
   // m.def("observe_for_search", &observeForSearch);
 

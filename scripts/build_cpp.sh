@@ -4,5 +4,5 @@ fi
 
 cd build
 
-cmake ../cpp; make -j10
+cmake ..; make -j10
 

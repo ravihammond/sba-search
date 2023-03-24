@@ -1,7 +1,7 @@
 PYTHON = python3
 PIP = pip3
 
-IMAGE=ravihammond/hanabi-project-rlsearch
+IMAGE=ravihammond/hanabi-project
 
 default:
 	@make -s build-cpp
@@ -16,10 +16,10 @@ build-dev:
 	docker build $(FLAGS) -t ${IMAGE}:dev -f dockerfiles/Dockerfile.projectnew --target dev .
 
 build-prod:
-	docker build $(FLAGS) -t ${IMAGE}:prod -f dockerfiles/Dockerfile.projectnew --target prod .
+	docker build $(FLAGS) -t ${IMAGE}:prod-search -f dockerfiles/Dockerfile.projectnew --target prod-search .
 
 push-prod:
-	docker push ${IMAGE}:prod
+	docker push ${IMAGE}:prod-search
 
 build-push-prod: build-prod push-prod
 

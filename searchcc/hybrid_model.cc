@@ -58,8 +58,7 @@ void HybridModel::observeBeforeAct(
     float eps, 
     bool testActing, 
     rela::TensorDict* retFeat) {
-  if (testActing) 
-    printf("bp observing %s\n", legacySad_ ? "(SAD)": "");
+  chosenMoves_.clear();
   auto feat = observe(env.state(), index, hideAction, legacySad_);
   if (retFeat != nullptr) {
     *retFeat = feat;
@@ -80,8 +79,6 @@ void HybridModel::observeBeforeAct(
   if (testActing && testPartner_) {
     auto featPartner = observe(env.state(), index, hideAction, legacySadPartner_);
 
-    if (testActing)
-      printf("bpPartner observing %s\n", legacySadPartner_ ? "(SAD)": "");
     inputPartner = featPartner;
     inputPartner["actor_index"] = torch::tensor(index);
 
@@ -98,8 +95,6 @@ void HybridModel::observeBeforeAct(
     feat["eps"] = torch::tensor(std::vector<float>{eps});
     auto rlInput = feat;
     addHid(rlInput, rlHid_);
-    if (testActing) 
-      printf("rl observing %s\n", legacySad_ ? "(SAD)": "");
 
     futRl_ = rlModel_->call("act", rlInput);
   }
@@ -130,8 +125,7 @@ int HybridModel::decideAction(
     auto rlaction = rlReply.at("a").item<int64_t>();
     auto move = env.state().ParentGame()->GetMove(rlaction);
     if (testActing) {
-      printf("rl Action: %s%s\n", move.ToString().c_str(),
-             legacySad_ ? " (SAD)": "");
+      chosenMoves_["rl action"] = move.ToString();
 
       if (replayBuffer_ != nullptr) {
         for (auto& kv: rlReply) {
@@ -174,8 +168,7 @@ int HybridModel::decideAction(
     if (testActing) {
       int bpAction = bpReply.at("a").item<int64_t>();
       auto bpMove = env.state().ParentGame()->GetMove(bpAction);
-      printf("bp Action: %s%s\n", bpMove.ToString().c_str(),
-             legacySad_ ? " (SAD)": "");
+      chosenMoves_["bp action"] = bpMove.ToString();
     }
 
     if (retAction != nullptr) {
@@ -185,14 +178,12 @@ int HybridModel::decideAction(
     assert(futRl_.isNull());
     action = bpReply.at("a").item<int64_t>();
     auto move = env.state().ParentGame()->GetMove(action);
-    if (testActing) printf("bp Action: %s%s\n", move.ToString().c_str(),
-        legacySad_ ? " (SAD)": "");
+    chosenMoves_["bp action"] = move.ToString();
 
     if (testActing && testPartner_) {
       action = bpPartnerReply.at("a").item<int64_t>();
       move = env.state().ParentGame()->GetMove(action);
-      printf("bpPartner Action: %s%s\n", move.ToString().c_str(),
-        legacySadPartner_ ? " (SAD)": "");
+      chosenMoves_["bp partner action"] = move.ToString();
     }
 
     // assert(retAction == nullptr);

@@ -432,3 +432,4 @@ hle::HanabiMove RLSearchActor::spartaSearch(
 }
 
 }  // namespace search
+

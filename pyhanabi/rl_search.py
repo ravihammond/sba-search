@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 import random
+import pathlib
 
 # c++ backend
 import set_path
@@ -28,6 +29,8 @@ import hanalearn
 import utils
 import common_utils
 import belief_model
+
+from google_cloud_handler import GoogleCloudHandler
 
 CARD_ID_TO_STRING = np.array([
     "R1",
@@ -322,7 +325,7 @@ def main(args):
     log_save_file = f"{args.player_name[1]}_vs_{args.player_name[0]}_game_{args.seed}.log"
 
     common_utils.set_all_seeds(args.seed)
-    logger_path = os.path.join(args.save_dir, log_save_file)
+    logger_path = os.path.join(args.save_dir, "logs", log_save_file)
     sys.stdout = common_utils.Logger(logger_path)
     print("log path:", logger_path)
 
@@ -400,7 +403,7 @@ def main(args):
 
     now = datetime.now()
 
-    game_data = run(
+    game_data, score = run(
         args.game_seed,
         actors,
         search_wrappers[1],
@@ -412,8 +415,7 @@ def main(args):
 
     data = replay_to_dataframe(args, replay_buffer, now, game_data)
 
-    if args.upload_gcloud:
-        upload_gcloud(args, data, now)
+    save_and_upload(args, data, score, now)
 
 
 def load_json_list(convention_path):
@@ -455,7 +457,7 @@ def run(seed, actors, search_actor, args):
         actor.initialise()
 
     while not game.terminal():
-        print("================STEP %d================\n" % step)
+        print("\n================STEP %d================\n" % step)
         if args.verbose:
             print(f"{game.state().to_string()}\n")
 
@@ -499,7 +501,7 @@ def run(seed, actors, search_actor, args):
                     
                 if rl_score - bp_score >= args.threshold:
                     game_data[i]["rl_action_chosen"][-1] = 1
-                    print("set use rl")
+                    print("Using rl move")
                     search_actor.actor.set_use_rl(args.num_rl_step)
 
                 game_data[i]["rl_score"][-1] = rl_score
@@ -524,6 +526,8 @@ def run(seed, actors, search_actor, args):
             print(f"\n---Actor {i} decide action---")
             action = actor.decide_action(game)
             actions.append(action)
+            for label, move in actor.get_chosen_moves().items():
+                print(f"{label}:", move)
 
         move = game.get_move(actions[cur_player])
 
@@ -546,9 +550,11 @@ def run(seed, actors, search_actor, args):
         print(f"\n---Actor {i} push episode to replay buffer---")
         actor.push_episode_to_replay_buffer()
 
-    print(f"Final Score: {game.get_score()}, Seed: {seed}")
+    score = game.get_score()
 
-    return game_data
+    print(f"Final Score: {score}, Seed: {seed}")
+
+    return game_data, score
 
 
 def train(game, search_actor, replay_buffer, args, eval_seed):
@@ -685,11 +691,9 @@ def replay_to_dataframe(args, replay_buffer, now, game_data):
 def batch_to_dataset(args, batch1, batch2, date_time, game_data):
     df = pd.DataFrame()
 
-    print("player 0")
     obs_df = player_dataframe(args, batch1, 0, date_time, game_data[0])
     df = pd.concat([df, obs_df])
 
-    print("player 1")
     obs_df = player_dataframe(args, batch2, 1, date_time, game_data[1])
     df = pd.concat([df, obs_df])
 
@@ -1224,23 +1228,61 @@ def remove_states_after_terminal(args, df, terminal):
     df = df.drop("remove_rows", axis=1)
     return df
 
+def save_and_upload(args, data, score, now):
+    if not args.save_game:
+        return
 
-def upload_gcloud(args, data, now):
-    if not os.path.exists(args.save_dir):
-        os.makedirs(args.save_dir)
+    #Create folder
+    games_dir = os.path.join(args.save_dir, "games")
+    scores_dir = os.path.join(args.save_dir, "scores")
+    logs_dir = os.path.join(args.save_dir, "logs")
+    if not os.path.exists(games_dir):
+        os.makedirs(games_dir)
+    if not os.path.exists(scores_dir):
+        os.makedirs(scores_dir)
 
-    date_time = now.strftime("%m.%d.%Y_%H:%M:%S")
+    filename = f"{args.player_name[1]}_vs_{args.player_name[0]}_game_{args.seed}"
+    game_file = f"{filename}.pkl"
+    score_file = f"{filename}.txt"
+    log_file = f"{filename}.log"
+    game_path = os.path.join(games_dir, game_file)
+    score_path = os.path.join(scores_dir, score_file)
+    log_path = os.path.join(logs_dir, log_file)
 
-    filename = f"{args.player_name[1]}_vs_{args.player_name[0]}_{date_time}.pkl"
-    filepath = os.path.join(args.save_dir, filename)
+    print("saving:", game_path)
+    data.to_pickle(game_path, compression="gzip")
 
-    print("Saving:", filepath)
-    data.to_pickle(filepath, compression="gzip")
+    print("saving:", score_path)
+    with open(score_path, 'w') as f:
+      f.write("%d\n" % score)
+    
+    if not args.upload_gcloud:
+        return
 
+    hanabi_dir = "hanabi-search-games"
+    game_path_obj = pathlib.Path(game_path)
+    gc_game_path = os.path.join(hanabi_dir, *game_path_obj.parts[1:])
+    score_path_obj = pathlib.Path(score_path)
+    gc_score_path = os.path.join(hanabi_dir, *score_path_obj.parts[1:])
+    log_path_obj = pathlib.Path(log_path)
+    gc_log_path = os.path.join(hanabi_dir, *log_path_obj.parts[1:])
+
+    gc_handler = GoogleCloudHandler("aiml-reid-research", "Ravi")
+
+    print("uploading:", gc_game_path)
+    gc_handler.assert_file_doesnt_exist(gc_game_path)
+    gc_handler.upload(game_path, gc_game_path)
+
+    print("uploading:", gc_score_path)
+    gc_handler.assert_file_doesnt_exist(gc_score_path)
+    gc_handler.upload(score_path, gc_score_path)
+
+    print("uploading:", gc_log_path)
+    gc_handler.assert_file_doesnt_exist(gc_log_path)
+    gc_handler.upload(log_path, gc_log_path)
 
 
 # ===============================================================
-
 
 
 def parse_args():
@@ -1308,6 +1350,7 @@ def parse_args():
     parser.add_argument("--ad_hoc", type=int, default=0)
     parser.add_argument("--save_game", type=int, default=0)
     parser.add_argument("--save_dir", type=str, default="game_data/default")
+    parser.add_argument("--split_type", type=str, default="six")
 
     args = parser.parse_args()
     if args.debug:
