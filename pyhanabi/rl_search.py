@@ -319,7 +319,7 @@ class SearchWrapper:
         self.actor.reset_rl_rnn()
 
 
-def main(args):
+def run_rl_search(args):
     pprint(vars(args))
 
     log_save_file = f"{args.player_name[1]}_vs_{args.player_name[0]}_game_{args.seed}.log"
@@ -1372,5 +1372,5 @@ def parse_args():
 if __name__ == "__main__":
     torch.backends.cudnn.deterministic = True
     args = parse_args()
-    main(args)
+    run_rl_search(args)
 
