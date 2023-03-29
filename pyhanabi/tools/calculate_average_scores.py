@@ -8,7 +8,6 @@ pprint = pprint.pprint
 import numpy as np
 import json
 import pathlib
-from natsort import natsorted, ns
 import csv
 
 SPLIT_NAME = { "six": "6-7-splits", "one": "1-12-splits" }
@@ -50,7 +49,7 @@ def calculate_average_scores(args, model, split_type, data_type):
     )
 
     if not os.path.exists(dir_path):
-        print(bcolors.FAIL + f"Path does not exist." + bcolors.ENDC)
+        print(bcolors.FAIL + f"Path {dir_path} not exist." + bcolors.ENDC)
         return 
 
     splits = load_json_list(f"train_test_splits/sad_splits_{split_type}.json")

@@ -5,6 +5,8 @@ python rl_search.py \
     --weight1 ../models/sad_2p_models/sad_2.pthw \
     --weight2 ../models/my_models/br_sad_six_1_3_6_7_8_12/model_epoch1000.pthw \
     --sad_legacy 1,0 \
+    --search_partner_weight ../models/sad_2p_models/sad_1.pthw \
+    --search_partner_sad_legacy 1 \
     --player_name sad_2,br_sad_six_1_3_6_7_8_12 \
     --data_type test \
     --split_type six \
@@ -26,3 +28,4 @@ python rl_search.py \
     --ad_hoc 1 \
     --upload_gcloud 1 \
     --save_game 1 \
+

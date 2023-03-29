@@ -379,10 +379,11 @@ def run_rl_search(args):
     search_wrappers = []
     rl_rollout_devices = [None, args.rl_rollout_device]
     test_partner = [1, 0]
-    weight_files = [args.weight2, args.weight2]
+    weight_files = [args.search_partner_weight, args.weight2]
     partner_weight = [args.weight1, None]
-    sad_legacy = [args.sad_legacy[1], args.sad_legacy[1]]
+    sad_legacy = [args.search_partner_sad_legacy, args.sad_legacy[1]]
     sad_legacy_partner = [args.sad_legacy[0], 0]
+
     for i in range(2):
         search_wrappers.append(create_search_wrapper(
             i, 
@@ -1261,11 +1262,11 @@ def save_and_upload(args, data, score, now):
 
     hanabi_dir = "hanabi-search-games"
     game_path_obj = pathlib.Path(game_path)
-    gc_game_path = os.path.join(hanabi_dir, *game_path_obj.parts[1:])
+    gc_game_path = os.path.join(args.gcloud_dir, *game_path_obj.parts[1:])
     score_path_obj = pathlib.Path(score_path)
-    gc_score_path = os.path.join(hanabi_dir, *score_path_obj.parts[1:])
+    gc_score_path = os.path.join(args.gcloud_dir, *score_path_obj.parts[1:])
     log_path_obj = pathlib.Path(log_path)
-    gc_log_path = os.path.join(hanabi_dir, *log_path_obj.parts[1:])
+    gc_log_path = os.path.join(args.gcloud_dir, *log_path_obj.parts[1:])
 
     gc_handler = GoogleCloudHandler("aiml-reid-research", "Ravi")
 
@@ -1345,12 +1346,16 @@ def parse_args():
 
     parser.add_argument("--skip_search", type=int, default=0)
     parser.add_argument("--upload_gcloud", type=int, default=0)
+    parser.add_argument("--gcloud_dir", type=str, default="hanabi-search-games")
     parser.add_argument("--data_type", type=str, default="test")
     parser.add_argument("--verbose", type=int, default=0)
     parser.add_argument("--ad_hoc", type=int, default=0)
     parser.add_argument("--save_game", type=int, default=0)
     parser.add_argument("--save_dir", type=str, default="game_data/default")
     parser.add_argument("--split_type", type=str, default="six")
+
+    parser.add_argument("--search_partner_weight", type=str, required=True)
+    parser.add_argument("--search_partner_sad_legacy", type=int, required=True)
 
     args = parser.parse_args()
     if args.debug:

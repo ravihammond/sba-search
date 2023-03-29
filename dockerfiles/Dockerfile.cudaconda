@@ -74,6 +74,5 @@ RUN pip install \
     natsort
 
 RUN conda install -c conda-forge \
-    google-cloud-storage 
-
-
+    google-cloud-storage \
+    statsmodels

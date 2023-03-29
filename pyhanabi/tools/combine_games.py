@@ -8,8 +8,9 @@ pprint = pprint.pprint
 import numpy as np
 import json
 import pathlib
-from natsort import natsorted, ns
+# from natsort import natsorted, ns
 import csv
+import re
 
 SPLIT_NAME = { "six": "6-7-splits", "one": "1-12-splits" }
 
@@ -77,7 +78,8 @@ def combine_for_pair(args, split_type, data_type, split_index,
 
     all_file_names = os.listdir(dir_path)
     file_names = [ x for x in all_file_names if sad_partner in x ]
-    file_names = natsorted(file_names, alg=ns.IGNORECASE)
+    # file_names = natsorted(file_names, alg=ns.IGNORECASE)
+    file_names = natural_sort(file_names)
 
     all_file_names_str = " ".join(file_names)
     found_files = []
@@ -98,6 +100,12 @@ def combine_for_pair(args, split_type, data_type, split_index,
     else:
         print(bcolors.WARNING + f"Partial {file_type} found, {len(missing_files)} missing.")
         print(bcolors.ENDC, end="")
+
+
+def natural_sort(l): 
+    convert = lambda text: int(text) if text.isdigit() else text.lower() 
+    alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)] 
+    return sorted(l, key=alphanum_key)
 
 
 def combine_scores(args, file_names, dir_path, model_pair_name):

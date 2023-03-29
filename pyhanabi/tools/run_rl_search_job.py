@@ -111,6 +111,8 @@ def run_job(job):
         "--weight1", job.partner,
         "--weight2", job.player,
         "--sad_legacy", ",".join([str(x) for x in job.sad_legacy]),
+        "--search_partner_weight", "../models/sad_2p_models/sad_1.pthw",
+        "--search_partner_sad_legacy", "1",
         "--player_name", ",".join(job.name),
         "--data_type", args.data_type,
         "--split_type", args.split_type,
@@ -132,7 +134,7 @@ def run_job(job):
         "--ad_hoc", "1",
         "--upload_gcloud", "1",
         "--save_game", "1",
-        "--verbose", "1"
+        "--verbose", "1",
     ]
 
     subprocess.run(command)
@@ -149,6 +151,7 @@ def parse_args():
     parser.add_argument("--seeds", type=str, default="0")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--skip_search", type=int, default=0)
+    parser.add_argument("--gcloud_dir", type=str, default="hanabi-search-games-sad-1")
     args = parser.parse_args()
     return args
 
