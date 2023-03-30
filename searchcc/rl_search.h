@@ -23,8 +23,8 @@ class RLSearchActor {
  public:
   RLSearchActor(
       int index,
-      std::shared_ptr<rela::BatchRunner> bpRunner,
-      std::shared_ptr<rela::BatchRunner> bpPartnerRunner,
+      std::vector<std::shared_ptr<rela::BatchRunner>> bpRunners,
+      std::shared_ptr<rela::BatchRunner> testPartnerRunner,
       std::shared_ptr<rela::BatchRunner> rlRunner,
       std::shared_ptr<rela::BatchRunner> beliefRunner,
       int num_samples,
@@ -34,32 +34,39 @@ class RLSearchActor {
       int nStep,
       float gamma,
       int seed,
-      bool legacySad,
-      bool legacySadPartner,
+      std::vector<bool> legacySad,
+      bool legacyTestSadPartner,
       std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
       bool testPartner)
-      : index(index)
-      , beliefRunner_(beliefRunner)
-      , num_samples_(num_samples)
-      , publBelief_(publBelief)
-      , jointSearch_(jointSearch)
-      , epsList_(epsList)
-      , nStep_(nStep)
-      , gamma_(gamma)
-      , rng_(seed)
-      , prevModel_(index, legacySad, legacySadPartner, replayBuffer, testPartner)
-      , model_(index, legacySad, legacySadPartner, replayBuffer, testPartner) 
-      , legacySad_(legacySad) 
-      , legacySadPartner_(legacySadPartner) 
-      , testPartner_(testPartner) {
-    assert(bpRunner != nullptr);
-    model_.setBpModel(bpRunner, getH0(*bpRunner, 1));
-    if (bpPartnerRunner != nullptr) {
-      model_.setBpPartnerModel(bpPartnerRunner, getH0(*bpPartnerRunner, 1));
+        : index(index)
+        , beliefRunner_(beliefRunner)
+        , num_samples_(num_samples)
+        , publBelief_(publBelief)
+        , jointSearch_(jointSearch)
+        , epsList_(epsList)
+        , nStep_(nStep)
+        , gamma_(gamma)
+        , rng_(seed)
+        , prevModel_(index, legacySad, legacyTestSadPartner, replayBuffer, testPartner)
+        , model_(index, legacySad, legacyTestSadPartner, replayBuffer, testPartner) 
+        , legacySad_(legacySad) 
+        , legacyTestSadPartner_(legacyTestSadPartner) 
+        , testPartner_(testPartner) {
+    std::vector<rela::TensorDict> bpRunnersH0;
+    for (auto runner: bpRunners) {
+      assert(runner != nullptr);
+      bpRunnersH0.push_back(getH0(*runner, 1));
     }
+    model_.setBpModel(bpRunners, bpRunnersH0);
+
+    if (testPartnerRunner != nullptr) {
+      model_.setBpPartnerModel(testPartnerRunner, getH0(*testPartnerRunner, 1));
+    }
+
     if (rlRunner != nullptr) {
       model_.setRlModel(rlRunner, getH0(*rlRunner, 1));
     }
+
     if (beliefRunner_ != nullptr) {
       beliefRnnHid_ = getH0(*beliefRunner_, 1);
       model_.setBeliefHid(beliefRnnHid_);
@@ -80,7 +87,7 @@ class RLSearchActor {
     if (model_.getRlStep() > 0) {
       model_.setRlStep(0);
     }
-    model_.setRlHid(model_.getBpHid());
+    model_.setRlHid(model_.getBpHid()[0]);
   }
 
   void setUseRL(int numStep) {
@@ -99,7 +106,7 @@ class RLSearchActor {
 
     auto [obs, lastMove, cardCount, myHand] =
         observeForSearch(env.state(), index, 
-            hideAction, publBelief_, legacySad_);
+            hideAction, publBelief_, legacySad_[0]);
 
     search::updateBelief(
         prevState_,
@@ -118,7 +125,7 @@ class RLSearchActor {
 
     auto [obs, lastMove, cardCount, myHand] =
         observeForSearch(env.state(), index, 
-            hideAction, publBelief_, legacySad_);
+            hideAction, publBelief_, legacySad_[0]);
     applyModel(obs, *beliefRunner_, beliefRnnHid_, "observe");
     model_.setBeliefHid(beliefRnnHid_);
   }
@@ -238,8 +245,8 @@ class RLSearchActor {
   mutable std::unique_ptr<rela::Context> context_;
   int callOrder_ = 0;
 
-  bool legacySad_;
-  bool legacySadPartner_;
+  std::vector<bool> legacySad_;
+  bool legacyTestSadPartner_;
 
   bool testPartner_;
 };

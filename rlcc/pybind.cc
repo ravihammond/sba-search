@@ -152,7 +152,7 @@ PYBIND11_MODULE(hanalearn, m) {
       m, "RLSearchActor")
       .def(py::init<
            int,
-           std::shared_ptr<rela::BatchRunner>,
+           std::vector<std::shared_ptr<rela::BatchRunner>>,
            std::shared_ptr<rela::BatchRunner>,
            std::shared_ptr<rela::BatchRunner>,
            std::shared_ptr<rela::BatchRunner>,
@@ -163,7 +163,7 @@ PYBIND11_MODULE(hanalearn, m) {
            int,
            float,
            int,
-           bool,
+           std::vector<bool>,
            bool,
            std::shared_ptr<rela::RNNPrioritizedReplay>,
            bool>())

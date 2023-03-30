@@ -117,7 +117,6 @@ def parse_hydra_dict(lines):
 
 def get_train_config(weight_file):
     log = os.path.join(os.path.dirname(weight_file), "train.log")
-    print("log:", log)
     if not os.path.exists(log):
         return None
 
@@ -186,6 +185,7 @@ def load_agent(weight_file, overwrite):
         "uniform_priority": overwrite.get("uniform_priority", False),
         "net": cfg.get("net", "publ-lstm"),
         "off_belief": overwrite.get("off_belief", cfg.get("off_belief", False)),
+        "weight_file": weight_file,
     }
     if cfg.get("net", None) == "transformer":
         config["nhead"] = cfg["nhead"]

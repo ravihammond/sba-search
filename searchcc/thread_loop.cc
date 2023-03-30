@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include "searchcc/thread_loop.h"
 
+#define PR false
+
 namespace search {
 
 bool plausible(
@@ -112,17 +114,29 @@ SearchThreadLoop::SearchThreadLoop(
 }
 
 void SearchThreadLoop::mainLoop() {
+  int game_turn = 0;
   while (!terminated()) {
+    if(PR)printf("\n=======================================\n");
+    if(PR)printf("Game Turn: %d\n", game_turn);
+    if(PR)printf("\n%s\n", envs_[0].state().ToString().c_str());
     for (int i = 0; i < numEnv_; ++i) {
-      for (auto& actor : actors_[i]) {
-        actor->observeBeforeAct(envs_[i]);
+      int curPlayer = envs_[i].state().CurPlayer();
+      //for (auto& actor : actors_[i]) {
+      for (int j = 0; j < (int)actors_[i].size(); j++) {
+        if(PR) printf("\n[player %d observe before acting]%s\n", j,
+            curPlayer == j ? " <-- current player" : "");
+        actors_[i][j]->observeBeforeAct(envs_[i]);
       }
     }
+
+    if(PR)printf("\n----\n");
 
     for (int i = 0; i < numEnv_; ++i) {
       int curPlayer = envs_[i].state().CurPlayer();
       int action = -1;
       for (int j = 0; j < (int)actors_[i].size(); ++j) {
+        if(PR) printf("\n[player %d decide action]%s\n", j,
+            curPlayer == j ? " <-- current player" : "");
         auto action_ = actors_[i][j]->decideAction(envs_[i]);
         if (j == curPlayer) {
           action = action_;
@@ -131,18 +145,30 @@ void SearchThreadLoop::mainLoop() {
       envs_[i].step(envs_[i].getMove(action));
     }
 
+    if(PR)printf("\n----\n");
+
     for (int i = 0; i < numEnv_; ++i) {
-      for (auto& actor : actors_[i]) {
-        actor->observeAfterAct(envs_[i]);
+      int curPlayer = envs_[i].state().CurPlayer();
+      for (int j = 0; j < (int)actors_[i].size(); j++) {
+        if(PR) printf("\n[player %d observe after act]%s\n", j,
+            curPlayer == j ? " <-- current player" : "");
+        actors_[i][j]->observeAfterAct(envs_[i]);
       }
     }
 
+    if(PR)printf("\n----\n");
+
     std::vector<bool> endEpisode(numEnv_, false);
     for (int i = 0; i < numEnv_; ++i) {
-      for (auto& actor : actors_[i]) {
-        endEpisode[i] = (actor->maybeEndEpisode(envs_[i]) || endEpisode[i]);
+      int curPlayer = envs_[i].state().CurPlayer();
+      for (int j = 0; j < (int)actors_[i].size(); j++) {
+        if(PR) printf("\n[player %d maybe end episode]%s\n", j,
+            curPlayer == j ? " <-- current player" : "");
+        endEpisode[i] = (actors_[i][j]->maybeEndEpisode(envs_[i]) || endEpisode[i]);
       }
     }
+
+    if(PR)printf("\n----\n");
 
     for (int i = 0; i < numEnv_; ++i) {
       if (endEpisode[i]) {
@@ -164,10 +190,14 @@ void SearchThreadLoop::mainLoop() {
 
       auto simHands = sampleHands();
       envs_[i].reset(refState_, simHands);
-      for (auto& actor : actors_[i]) {
-        actor->reset();
+      int curPlayer = envs_[i].state().CurPlayer();
+      for (int j = 0; j < (int)actors_[i].size(); j++) {
+        if(PR) printf("\n[player %d reset]%s\n", j,
+            curPlayer == j ? " <-- current player" : "");
+        actors_[i][j]->reset();
       }
     }
+    game_turn++;
   }
 }
 

@@ -68,6 +68,13 @@ class BatchRunner {
   // for debugging
   rela::TensorDict blockCall(const std::string& method, const TensorDict& t);
 
+  void printModel() {
+      std::vector<torch::jit::IValue> input{};
+      auto name = jitModel_->get_method("get_model_name")(input).toStringRef();
+      auto device = jitModel_->get_method("get_model_device")(input).toStringRef();
+      printf("Model: %s, Device: %s\n", name.c_str(), device.c_str());
+  }
+
  private:
   void runnerLoop(const std::string& method);
 

@@ -7,29 +7,31 @@
 #include <iostream>
 #include "searchcc/hybrid_model.h"
 
+#define PR false
+
 namespace search {
 
 rela::Future HybridModel::asyncComputeAction(const GameSimulator& env) const {
-  auto input = observe(env.state(), index, hideAction, legacySad_);
+  auto input = observe(env.state(), index, hideAction, legacySad_[0]);
   input["actor_index"] = torch::tensor(index);
   if (rlStep_ > 0) {
     addHid(input, rlHid_);
     input["eps"] = torch::tensor(std::vector<float>{0});
     return rlModel_->call("act", input);
   } else {
-    addHid(input, bpHid_);
-    return bpModel_->call("act", input);
+    addHid(input, bpHid_[0]);
+    return bpModel_[0]->call("act", input);
   }
 }
 
 // compute bootstrap target/value using blueprint
 rela::Future HybridModel::asyncComputeTarget(
     const GameSimulator& env, float reward, bool terminal) const {
-  auto feat = observe(env.state(), index, false, legacySad_);
+  auto feat = observe(env.state(), index, false, legacySad_[0]);
   feat["reward"] = torch::tensor(reward);
   feat["terminal"] = torch::tensor((float)terminal);
-  addHid(feat, bpHid_);
-  return bpModel_->call("compute_target", feat);
+  addHid(feat, bpHid_[0]);
+  return bpModel_[0]->call("compute_target", feat);
 }
 
 // compute priority with rl model
@@ -40,7 +42,7 @@ rela::Future HybridModel::asyncComputePriority(const rela::TensorDict& input) co
 
 void HybridModel::initialise(bool testActing) {
   if (testActing) {
-    auto hid = bpHid_;
+    auto hid = bpHid_[0];
 
     if (testPartner_) {
       hid = bpPartnerHid_;
@@ -59,7 +61,7 @@ void HybridModel::observeBeforeAct(
     bool testActing, 
     rela::TensorDict* retFeat) {
   chosenMoves_.clear();
-  auto feat = observe(env.state(), index, hideAction, legacySad_);
+  auto feat = observe(env.state(), index, hideAction, legacySad_[0]);
   if (retFeat != nullptr) {
     *retFeat = feat;
   }
@@ -69,15 +71,17 @@ void HybridModel::observeBeforeAct(
     r2d2Buffer_->pushObs(input);
   }
 
-  addHid(input, bpHid_);
-  futBp_ = bpModel_->call("act", input);
+  addHid(input, bpHid_[0]);
+  if(PR)printf("bp calling act\n");
+  if(PR)bpModel_[0]->printModel();
+  futBp_ = bpModel_[0]->call("act", input);
 
   // forward bp regardless of whether rl is used
 
   rela::TensorDict inputPartner;
 
   if (testActing && testPartner_) {
-    auto featPartner = observe(env.state(), index, hideAction, legacySadPartner_);
+    auto featPartner = observe(env.state(), index, hideAction, legacySadTestPartner_);
 
     inputPartner = featPartner;
     inputPartner["actor_index"] = torch::tensor(index);
@@ -87,6 +91,8 @@ void HybridModel::observeBeforeAct(
     }
 
     addHid(inputPartner, bpPartnerHid_);
+    if(PR)printf("bp partner calling act\n");
+    if(PR)bpPartnerModel_->printModel();
     futBpPartner_ = bpPartnerModel_->call("act", inputPartner);
   }
 
@@ -96,6 +102,8 @@ void HybridModel::observeBeforeAct(
     auto rlInput = feat;
     addHid(rlInput, rlHid_);
 
+    if(PR)printf("rl calling act\n");
+    if(PR)rlModel_->printModel();
     futRl_ = rlModel_->call("act", rlInput);
   }
 }
@@ -109,7 +117,7 @@ int HybridModel::decideAction(
   // Get bp results, and update hid
   int action = -1;
   auto bpReply = futBp_.get();
-  updateHid(bpReply, bpHid_);
+  updateHid(bpReply, bpHid_[0]);
 
   // Get partner bp results, and update hid
   rela::TensorDict bpPartnerReply;

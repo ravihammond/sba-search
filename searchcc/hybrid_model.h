@@ -37,22 +37,22 @@ class HybridModel {
  public:
   HybridModel(
       int index, 
-      bool legacySad,
-      bool legacySadPartner,
+      std::vector<bool> legacySad,
+      bool legacySadTestPartner,
       std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
       bool testPartner)
       : index(index)
       , rlStep_(0) 
       , legacySad_(legacySad)
-      , legacySadPartner_(legacySadPartner)
+      , legacySadTestPartner_(legacySadTestPartner)
       , replayBuffer_(std::move(replayBuffer))
       , testPartner_(testPartner) {
     if (testPartner_) {
       r2d2Buffer_ = std::make_shared<rela::R2D2Buffer>(
-            legacySadPartner ? 1 : 3, 80, 0.999);
+            legacySadTestPartner ? 1 : 3, 80, 0.999);
     } else {
       r2d2Buffer_ = std::make_shared<rela::R2D2Buffer>(
-            legacySad ? 1 : 3, 80, 0.999);
+            legacySad[0] ? 1 : 3, 80, 0.999);
     }
   }
 
@@ -66,7 +66,7 @@ class HybridModel {
       , rlHid_(m.rlHid_)
       , rlStep_(m.rlStep_) 
       , legacySad_(m.legacySad_) 
-      , legacySadPartner_(m.legacySadPartner_) 
+      , legacySadTestPartner_(m.legacySadTestPartner_) 
       , replayBuffer_(m.replayBuffer_) 
       , r2d2Buffer_(m.r2d2Buffer_) 
       , testPartner_(m.testPartner_) {
@@ -82,18 +82,19 @@ class HybridModel {
     rlHid_ = m.rlHid_;
     rlStep_ = m.rlStep_;
     legacySad_ = m.legacySad_;
-    legacySadPartner_ = m.legacySadPartner_;
+    legacySadTestPartner_ = m.legacySadTestPartner_;
     replayBuffer_ = m.replayBuffer_;
     r2d2Buffer_ = m.r2d2Buffer_;
     testPartner_ = m.testPartner_;
     return *this;
   }
 
-  void setBpModel(std::shared_ptr<rela::BatchRunner> bpModel) {
+  void setBpModel(std::vector<std::shared_ptr<rela::BatchRunner>> bpModel) {
     bpModel_ = bpModel;
   }
 
-  void setBpModel(std::shared_ptr<rela::BatchRunner> bpModel, rela::TensorDict bpHid) {
+  void setBpModel(std::vector<std::shared_ptr<rela::BatchRunner>> bpModel, 
+      std::vector<rela::TensorDict> bpHid) {
     bpModel_ = bpModel;
     bpHid_ = bpHid;
   }
@@ -146,11 +147,11 @@ class HybridModel {
     rlStep_ = rlStep;
   }
 
-  const rela::TensorDict& getBpHid() const {
+  const std::vector<rela::TensorDict>& getBpHid() const {
     return bpHid_;
   }
 
-  void setBpHid(const rela::TensorDict& bpHid) {
+  void setBpHid(const std::vector<rela::TensorDict>& bpHid) {
     bpHid_ = bpHid;
   }
 
@@ -170,11 +171,11 @@ class HybridModel {
     bpPartnerHid_ = bpPartnerHid;
   }
 
-  void setPartnerBeliefHid(const rela::TensorDict& partner_belief_h0) {
+  void setTestPartnerBeliefHid(const rela::TensorDict& partner_belief_h0) {
     partner_belief_h0_ = partner_belief_h0;
   }
 
-  const rela::TensorDict& getPartnerBeliefHid() const {
+  const rela::TensorDict& getTestPartnerBeliefHid() const {
     return partner_belief_h0_;
   }
 
@@ -197,8 +198,8 @@ class HybridModel {
   const int index;
 
  private:
-  std::shared_ptr<rela::BatchRunner> bpModel_;
-  rela::TensorDict bpHid_;
+  std::vector<std::shared_ptr<rela::BatchRunner>> bpModel_;
+  std::vector<rela::TensorDict> bpHid_;
   rela::TensorDict belief_h0_;
   rela::Future futBp_;
 
@@ -213,8 +214,8 @@ class HybridModel {
 
   int rlStep_;
 
-  bool legacySad_;
-  bool legacySadPartner_;
+  std::vector<bool> legacySad_;
+  bool legacySadTestPartner_;
 
   std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer_;
   std::shared_ptr<rela::R2D2Buffer> r2d2Buffer_;

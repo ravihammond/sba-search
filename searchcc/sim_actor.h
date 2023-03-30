@@ -138,7 +138,7 @@ class SimulationActor {
   }
 
   HybridModel model_;
-  const rela::TensorDict initBpHid_;
+  const std::vector<rela::TensorDict> initBpHid_;
   const rela::TensorDict initRlHid_;
   const rela::TensorDict initBeliefHid_;
   const int initRlStep_;

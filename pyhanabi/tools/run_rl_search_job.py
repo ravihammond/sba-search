@@ -13,6 +13,7 @@ import subprocess
 
 def run_rl_search_jobs(args):
     jobs = create_search_jobs(args)
+    print(len(jobs))
     run_jobs(args, jobs)
 
 def create_search_jobs(args):
@@ -133,6 +134,7 @@ def run_job(job):
         "--skip_search", "0",
         "--ad_hoc", "1",
         "--upload_gcloud", "1",
+        "--gcloud_dir", args.gcloud_dir,
         "--save_game", "1",
         "--verbose", "1",
     ]

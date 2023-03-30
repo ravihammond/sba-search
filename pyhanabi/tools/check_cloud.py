@@ -10,7 +10,7 @@ from google.cloud import storage
 import json
 
 PROJECT = "aiml-reid-research"
-GCLOUD_PATH = "Ravi/hanabi-search-games/"
+GCLOUD_PATH = "Ravi"
 SPLIT_NAME = { "six": "6-7-splits", "one": "1-12-splits" }
 
 class bcolors:
@@ -54,6 +54,7 @@ def check_files(args, client, bucket, split_type, data_type, split_index, model)
 
     prefix = os.path.join(
         GCLOUD_PATH, 
+        args.dir,
         SPLIT_NAME[split_type],
         data_type,
         model,
@@ -120,6 +121,7 @@ if __name__ == "__main__":
     parser.add_argument("--data_type", type=str, default="test")
     parser.add_argument("--seeds", type=str, default="0-100")
     parser.add_argument("--verbose", type=int, default=0)
+    parser.add_argument("--dir", type=str, default="hanabi-search-games-sad-1")
     args = parser.parse_args()
 
     args.model = args.model.split(",")

@@ -46,6 +46,7 @@ class R2D2Agent(torch.jit.ScriptModule):
         nhead=None,
         nlayer=None,
         max_len=None,
+        weight_file="<not set>",
     ):
         super().__init__()
         if net == "ffwd":
@@ -91,10 +92,22 @@ class R2D2Agent(torch.jit.ScriptModule):
         self.nhead = nhead
         self.nlayer = nlayer
         self.max_len = max_len
+        self.device = device
+        self.model_name = weight_file
+
 
     @torch.jit.script_method
     def get_h0(self, batchsize: int) -> Dict[str, torch.Tensor]:
         return self.online_net.get_h0(batchsize)
+
+    @torch.jit.script_method
+    def get_model_name(self) -> str:
+        return self.model_name
+
+    @torch.jit.script_method
+    def get_model_device(self) -> str:
+        return self.device
+
 
     def clone(self, device, overwrite=None):
         if overwrite is None:
@@ -117,6 +130,7 @@ class R2D2Agent(torch.jit.ScriptModule):
             nhead=self.nhead,
             nlayer=self.nlayer,
             max_len=self.max_len,
+            weight_file=self.model_name,
         )
         cloned.load_state_dict(self.state_dict())
         cloned.train(self.training)
