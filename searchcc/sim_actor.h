@@ -45,7 +45,7 @@ class SimulationActor {
   }
 
   // eval mode, evaluate the mode as is
-  SimulationActor(const HybridModel& model)
+  SimulationActor(const HybridModel& model, int bpIndex)
       : model_(model)
       , initBpHid_(model.getBpHid())
       , initRlHid_(model.getRlHid())
@@ -55,8 +55,10 @@ class SimulationActor {
       , beliefMode_(false)
       , replayBuffer_(nullptr)
       , r2d2Buffer_(nullptr)
-      , rng_(1) {
+      , rng_(1) 
+      , bpIndex_(bpIndex){
     resetEps();
+    model_.setBpIndex(bpIndex);
   }
 
   // belief mode, evaluate the model as is, collect data
@@ -84,7 +86,10 @@ class SimulationActor {
   }
 
   // eval mode, evaluate the model as if it will use RL model
-  SimulationActor(const HybridModel& model, int numRlStep)
+  SimulationActor(
+      const HybridModel& model, 
+      int numRlStep,
+      int bpIndex)
       : model_(model)
       , initBpHid_(model.getBpHid())
       , initRlHid_(model.getRlHid())
@@ -94,12 +99,14 @@ class SimulationActor {
       , beliefMode_(false)
       , replayBuffer_(nullptr)
       , r2d2Buffer_(nullptr)
-      , rng_(1) {
+      , rng_(1)
+      , bpIndex_(bpIndex) {
     assert(model_.getRlStep() == 0);
     if (initRlStep_ > 0) {
       model_.setRlStep(initRlStep_);
     }
     resetEps();
+    //printf("eval rl sim_actor created, model bpIndex: %d\n", model.getBpIndex());
   }
 
   void reset() {
@@ -132,6 +139,10 @@ class SimulationActor {
 
   bool maybeEndEpisode(const GameSimulator& env);
 
+  int getBpIndex() {
+    return model_.getBpIndex();
+  }
+
  private:
   void resetEps() {
     eps_ = epsList_[rng_() % epsList_.size()];
@@ -158,6 +169,6 @@ class SimulationActor {
 
   int callOrder_ = 0;
   bool needReset_ = false;
-
+  int bpIndex_ = 0;
 };
 }  // namespace search

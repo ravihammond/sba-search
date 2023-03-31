@@ -37,7 +37,8 @@ class RLSearchActor {
       std::vector<bool> legacySad,
       bool legacyTestSadPartner,
       std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
-      bool testPartner)
+      bool testPartner,
+      int bpIndex)
         : index(index)
         , beliefRunner_(beliefRunner)
         , num_samples_(num_samples)
@@ -47,8 +48,10 @@ class RLSearchActor {
         , nStep_(nStep)
         , gamma_(gamma)
         , rng_(seed)
-        , prevModel_(index, legacySad, legacyTestSadPartner, replayBuffer, testPartner)
-        , model_(index, legacySad, legacyTestSadPartner, replayBuffer, testPartner) 
+        , prevModel_(index, legacySad, legacyTestSadPartner, 
+            replayBuffer, testPartner, bpIndex)
+        , model_(index, legacySad, legacyTestSadPartner, 
+            replayBuffer, testPartner, bpIndex) 
         , legacySad_(legacySad) 
         , legacyTestSadPartner_(legacyTestSadPartner) 
         , testPartner_(testPartner) {
@@ -198,6 +201,10 @@ class RLSearchActor {
 
   const int index;
   const bool hideAction = false;
+
+  int getNumBpModels() {
+    return model_.getNumBpModels();
+  }
 
  private:
   std::vector<std::shared_ptr<SearchThreadLoop>> startDataGeneration_(

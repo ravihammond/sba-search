@@ -35,8 +35,8 @@ python rl_search.py \
     --sad_legacy 0 \
     --test_partner_weight ../models/sad_2p_models/sad_2.pthw \
     --test_partner_sad_legacy 1 \
-    --search_partner_weight ../models/sad_2p_models/sad_1.pthw,../models/sad_2p_models/sad_3.pthw \
-    --search_partner_sad_legacy 1,1 \
+    --search_partner_weight ../models/sad_2p_models/sad_1.pthw,../models/sad_2p_models/sad_3.pthw,../models/sad_2p_models/sad_6.pthw,../models/sad_2p_models/sad_7.pthw,../models/sad_2p_models/sad_8.pthw,../models/sad_2p_models/sad_12.pthw \
+    --search_partner_sad_legacy 1,1,1,1,1,1 \
     --player_name sad_2,br_sad_six_1_3_6_7_8_12 \
     --data_type test \
     --split_type six \

@@ -208,6 +208,7 @@ class SearchWrapper:
             self.test_partner_sad_legacy,
             self.replay_buffer,
             self.is_test_partner,
+            -1 if self.is_test_partner else 0,
         )
         self.actor.set_compute_config(self.num_thread, self.num_game_per_thread)
 

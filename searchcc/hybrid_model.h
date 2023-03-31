@@ -39,14 +39,16 @@ class HybridModel {
       int index, 
       std::vector<bool> legacySad,
       bool legacySadTestPartner,
-      std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
-      bool testPartner)
+     std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
+      bool testPartner,
+      int bpIndex)
       : index(index)
       , rlStep_(0) 
       , legacySad_(legacySad)
       , legacySadTestPartner_(legacySadTestPartner)
       , replayBuffer_(std::move(replayBuffer))
-      , testPartner_(testPartner) {
+      , testPartner_(testPartner) 
+      , bpIndex_(bpIndex) {
     if (testPartner_) {
       r2d2Buffer_ = std::make_shared<rela::R2D2Buffer>(
             legacySadTestPartner ? 1 : 3, 80, 0.999);
@@ -69,7 +71,9 @@ class HybridModel {
       , legacySadTestPartner_(m.legacySadTestPartner_) 
       , replayBuffer_(m.replayBuffer_) 
       , r2d2Buffer_(m.r2d2Buffer_) 
-      , testPartner_(m.testPartner_) {
+      , testPartner_(m.testPartner_) 
+      , bpIndex_(m.bpIndex_) {
+    futBp_ = std::vector<rela::Future>(bpModel_.size());
   }
 
   HybridModel& operator=(const HybridModel& m) {
@@ -86,17 +90,20 @@ class HybridModel {
     replayBuffer_ = m.replayBuffer_;
     r2d2Buffer_ = m.r2d2Buffer_;
     testPartner_ = m.testPartner_;
+    bpIndex_ = m.bpIndex_;
     return *this;
   }
 
   void setBpModel(std::vector<std::shared_ptr<rela::BatchRunner>> bpModel) {
     bpModel_ = bpModel;
+    futBp_ = std::vector<rela::Future>(bpModel.size());
   }
 
   void setBpModel(std::vector<std::shared_ptr<rela::BatchRunner>> bpModel, 
       std::vector<rela::TensorDict> bpHid) {
     bpModel_ = bpModel;
     bpHid_ = bpHid;
+    futBp_ = std::vector<rela::Future>(bpModel.size());
   }
 
   void setBpPartnerModel(std::shared_ptr<rela::BatchRunner> bpPartnerModel) {
@@ -194,14 +201,29 @@ class HybridModel {
     return chosenMoves_;
   }
 
+  int getNumBpModels() {
+    return (int)bpModel_.size();
+  }
+
+  int getBpIndex() {
+    return bpIndex_;
+  }
+
+  void setBpIndex(int bpIndex) {
+    bpIndex_ = bpIndex;
+  }
+
   const bool hideAction = false;
   const int index;
 
  private:
+  rela::TensorDict observeBp(const GameSimulator& env, bool testActing, 
+      int bpIndex_, rela::TensorDict* retFeat = nullptr);
+
   std::vector<std::shared_ptr<rela::BatchRunner>> bpModel_;
   std::vector<rela::TensorDict> bpHid_;
   rela::TensorDict belief_h0_;
-  rela::Future futBp_;
+  std::vector<rela::Future> futBp_;
 
   std::shared_ptr<rela::BatchRunner> bpPartnerModel_;
   rela::TensorDict bpPartnerHid_;
@@ -223,5 +245,7 @@ class HybridModel {
   bool testPartner_;
 
   std::unordered_map<std::string, std::string> chosenMoves_;
+
+  int bpIndex_;
 };
 }  // namespace search

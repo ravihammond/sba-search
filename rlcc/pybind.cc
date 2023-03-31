@@ -151,22 +151,23 @@ PYBIND11_MODULE(hanalearn, m) {
   py::class_<search::RLSearchActor, std::shared_ptr<search::RLSearchActor>>(
       m, "RLSearchActor")
       .def(py::init<
-           int,
-           std::vector<std::shared_ptr<rela::BatchRunner>>,
-           std::shared_ptr<rela::BatchRunner>,
-           std::shared_ptr<rela::BatchRunner>,
-           std::shared_ptr<rela::BatchRunner>,
-           int,
-           bool,
-           bool,
-           const std::vector<float>&,
-           int,
-           float,
-           int,
-           std::vector<bool>,
-           bool,
-           std::shared_ptr<rela::RNNPrioritizedReplay>,
-           bool>())
+           int, // index
+           std::vector<std::shared_ptr<rela::BatchRunner>>, // bpRunners
+           std::shared_ptr<rela::BatchRunner>, // testPartnerRunner
+           std::shared_ptr<rela::BatchRunner>, // rlRunner
+           std::shared_ptr<rela::BatchRunner>, // beliefRunner
+           int, // num_samples
+           bool, // publBelief
+           bool, // jointSearch
+           const std::vector<float>&, // epsList
+           int, // nStep
+           float, // gamma
+           int, // seed
+           std::vector<bool>, // legacySad
+           bool, // legacyTestSadPartner
+           std::shared_ptr<rela::RNNPrioritizedReplay>, // replayBuffer
+           bool, // testPartner
+           int>()) // bpIndex
       .def("set_compute_config", &search::RLSearchActor::setComputeConfig)
       .def("set_partner", &search::RLSearchActor::setPartner)
       .def("update_belief", &search::RLSearchActor::updateBelief)

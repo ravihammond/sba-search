@@ -4,6 +4,8 @@
 // This source code is licensed under the license found in the
 // LICENSE file in the root directory of this source tree.
 //
+#include <iostream>
+#include "stdio.h"
 #include "searchcc/rl_search.h"
 #include <chrono>
 
@@ -22,6 +24,10 @@ std::vector<std::shared_ptr<SearchThreadLoop>> RLSearchActor::startDataGeneratio
     std::vector<std::vector<std::vector<hle::HanabiCardValue>>> simHands,
     bool useSimHands,
     bool beliefMode) const {
+  printf("startDataGeneration_\n");
+  printf("numThread: %d\n", numThread);
+  printf("numEnvPerThread: %d\n", numEnvPerThread);
+  printf("jointSearch: %d\n", jointSearch_);
   assert(context_ == nullptr);
   assert(partner_ != nullptr);
   assert(!(train && beliefMode));
@@ -33,20 +39,28 @@ std::vector<std::shared_ptr<SearchThreadLoop>> RLSearchActor::startDataGeneratio
       std::make_shared<std::vector<std::vector<std::vector<hle::HanabiCardValue>>>>(
           simHands);
 
+  int bpIndex = 0;
+
   for (int i = 0; i < numThread; ++i) {
+    printf("thread: %d\n", i);
     std::vector<std::vector<std::unique_ptr<SimulationActor>>> actors(numEnvPerThread);
     for (int j = 0; j < numEnvPerThread; ++j) {
+      printf("environment: %d\n", j);
       int seed = std::abs((int)rng());
+
       std::unique_ptr<SimulationActor> me;
+
       if (train) {
         me = std::make_unique<SimulationActor>(
             model_, numRlStep, epsList, replay, nStep_, gamma_, seed);
       } else if (beliefMode) {
         me = std::make_unique<SimulationActor>(model_, replay, nStep_);
       } else {
-        me = std::make_unique<SimulationActor>(model_, numRlStep);
+        me = std::make_unique<SimulationActor>(model_, numRlStep, 0);
       }
+
       std::unique_ptr<SimulationActor> partner;
+
       if (jointSearch_) {
         if (train) {
           // we also need data from out partner's perspective
@@ -56,11 +70,13 @@ std::vector<std::shared_ptr<SearchThreadLoop>> RLSearchActor::startDataGeneratio
           partner = std::make_unique<SimulationActor>(partner_->model_, replay, nStep_);
         } else {
           // partner also uses rl in evaluation
-          partner = std::make_unique<SimulationActor>(partner_->model_, numRlStep);
+          partner = std::make_unique<SimulationActor>(partner_->model_, numRlStep, bpIndex);
         }
       } else {
-        partner = std::make_unique<SimulationActor>(partner_->model_);
+        printf("bpIndex: %d\n", bpIndex);
+        partner = std::make_unique<SimulationActor>(partner_->model_, bpIndex);
       }
+
       // in fact, order of the actor does not matter
       if (index == 1) {
         actors[j].push_back(std::move(partner));
@@ -69,6 +85,8 @@ std::vector<std::shared_ptr<SearchThreadLoop>> RLSearchActor::startDataGeneratio
         actors[j].push_back(std::move(me));
         actors[j].push_back(std::move(partner));
       }
+
+      bpIndex = (bpIndex + 1) % partner_->getNumBpModels();
     }
 
     int seed = std::abs((int)rng());
@@ -104,18 +122,18 @@ std::vector<float> RLSearchActor::runSimGames(
 
   std::mt19937 rng(seed);
   auto threads = startDataGeneration_(
-      env,
-      nullptr,
-      numRlStep,
-      {0},
-      rng,
-      numGame,
-      1,
-      1,
-      false,
-      simHands,
-      useSimHands,
-      false);
+      env, // env
+      nullptr, // replay
+      numRlStep, // numRlStep
+      {0}, // epsList
+      rng, // rng
+      numGame, // numThread
+      1, // numEnvPerThread
+      1, // numGame
+      false, // train
+      simHands, // simHands
+      useSimHands, // useSimHands
+      false); // beliefMode
   while (!context_->terminated()) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
@@ -137,18 +155,18 @@ void RLSearchActor::startDataGeneration(
     bool beliefMode) const {
   assert(callOrder_ == 1 || useSimHands);
   startDataGeneration_(
-      env,
-      replay,
-      numRlStep,
-      epsList_,
-      rng_,
-      numThread_,
-      numEnvPerThread_,
-      -1,
-      !beliefMode,
-      simHands,
-      useSimHands,
-      beliefMode);
+      env, // env
+      replay, // replay
+      numRlStep, // numRlStep
+      epsList_, // epsList
+      rng_, // rng
+      numThread_, // numThread
+      numEnvPerThread_, // numEnvPerThread
+      -1, // numGame
+      !beliefMode, // train
+      simHands, // simHands
+      useSimHands, // useSimHand
+      beliefMode); // beliefMode
 }
 
 void RLSearchActor::stopDataGeneration() const {

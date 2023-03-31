@@ -7,7 +7,7 @@
 #include <iostream>
 #include "searchcc/hybrid_model.h"
 
-#define PR false
+#define PR true
 
 namespace search {
 
@@ -19,8 +19,8 @@ rela::Future HybridModel::asyncComputeAction(const GameSimulator& env) const {
     input["eps"] = torch::tensor(std::vector<float>{0});
     return rlModel_->call("act", input);
   } else {
-    addHid(input, bpHid_[0]);
-    return bpModel_[0]->call("act", input);
+    addHid(input, bpHid_[bpIndex_]);
+    return bpModel_[bpIndex_]->call("act", input);
   }
 }
 
@@ -30,8 +30,8 @@ rela::Future HybridModel::asyncComputeTarget(
   auto feat = observe(env.state(), index, false, legacySad_[0]);
   feat["reward"] = torch::tensor(reward);
   feat["terminal"] = torch::tensor((float)terminal);
-  addHid(feat, bpHid_[0]);
-  return bpModel_[0]->call("compute_target", feat);
+  addHid(feat, bpHid_[bpIndex_]);
+  return bpModel_[bpIndex_]->call("compute_target", feat);
 }
 
 // compute priority with rl model
@@ -42,10 +42,11 @@ rela::Future HybridModel::asyncComputePriority(const rela::TensorDict& input) co
 
 void HybridModel::initialise(bool testActing) {
   if (testActing) {
-    auto hid = bpHid_[0];
-
+    rela::TensorDict hid;
     if (testPartner_) {
       hid = bpPartnerHid_;
+    } else if (bpIndex_ != -1) {
+      hid = bpHid_[bpIndex_];
     }
 
     if (r2d2Buffer_ != nullptr) {
@@ -61,20 +62,18 @@ void HybridModel::observeBeforeAct(
     bool testActing, 
     rela::TensorDict* retFeat) {
   chosenMoves_.clear();
-  auto feat = observe(env.state(), index, hideAction, legacySad_[0]);
-  if (retFeat != nullptr) {
-    *retFeat = feat;
-  }
-  auto input = feat;
-  input["actor_index"] = torch::tensor(index);
-  if (testActing && replayBuffer_ != nullptr && !testPartner_) {
-    r2d2Buffer_->pushObs(input);
-  }
 
-  addHid(input, bpHid_[0]);
+  // Observe for all bp models
   if(PR)printf("bp calling act\n");
-  if(PR)bpModel_[0]->printModel();
-  futBp_ = bpModel_[0]->call("act", input);
+  if(PR)printf("bpIndex_: %d\n", bpIndex_);
+  rela::TensorDict feat;
+  if (bpIndex_ == -1) {
+    for (int i = 0; i < (int)bpModel_.size(); i++) {
+      observeBp(env, testActing, i);
+    }
+  } else {
+    feat = observeBp(env, testActing, bpIndex_, retFeat);
+  }
 
   // forward bp regardless of whether rl is used
 
@@ -108,6 +107,31 @@ void HybridModel::observeBeforeAct(
   }
 }
 
+rela::TensorDict HybridModel::observeBp(
+    const GameSimulator& env, 
+    bool testActing, 
+    int bpIndex, 
+    rela::TensorDict* retFeat) {
+  auto feat = observe(env.state(), index, hideAction, legacySad_[bpIndex]);
+
+  if (retFeat != nullptr) {
+    *retFeat = feat;
+  }
+
+  auto input = feat;
+  input["actor_index"] = torch::tensor(index);
+
+  if (testActing && replayBuffer_ != nullptr && !testPartner_) {
+    r2d2Buffer_->pushObs(input);
+  }
+
+  addHid(input, bpHid_[bpIndex]);
+  if(PR)bpModel_[bpIndex]->printModel();
+  futBp_[bpIndex] = bpModel_[bpIndex]->call("act", input);
+
+  return feat;
+}
+
 int HybridModel::decideAction(
     const GameSimulator& env, 
     bool verbose, 
@@ -116,8 +140,16 @@ int HybridModel::decideAction(
   (void)verbose;
   // Get bp results, and update hid
   int action = -1;
-  auto bpReply = futBp_.get();
-  updateHid(bpReply, bpHid_[0]);
+  rela::TensorDict bpReply;
+  if (bpIndex_ == -1) {
+    for (int i = 0; i < (int)bpHid_.size(); i++) {
+      auto reply = futBp_[i].get();
+      updateHid(reply, bpHid_[i]);
+    }
+  } else {
+    bpReply = futBp_[bpIndex_].get();
+    updateHid(bpReply, bpHid_[bpIndex_]);
+  }
 
   // Get partner bp results, and update hid
   rela::TensorDict bpPartnerReply;
@@ -184,14 +216,15 @@ int HybridModel::decideAction(
     }
   } else {
     assert(futRl_.isNull());
-    action = bpReply.at("a").item<int64_t>();
-    auto move = env.state().ParentGame()->GetMove(action);
-    chosenMoves_["bp action"] = move.ToString();
 
     if (testActing && testPartner_) {
       action = bpPartnerReply.at("a").item<int64_t>();
-      move = env.state().ParentGame()->GetMove(action);
+      auto move = env.state().ParentGame()->GetMove(action);
       chosenMoves_["bp partner action"] = move.ToString();
+    } else {
+      action = bpReply.at("a").item<int64_t>();
+      auto move = env.state().ParentGame()->GetMove(action);
+      chosenMoves_["bp action"] = move.ToString();
     }
 
     // assert(retAction == nullptr);
