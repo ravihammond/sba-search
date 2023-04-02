@@ -24,10 +24,6 @@ std::vector<std::shared_ptr<SearchThreadLoop>> RLSearchActor::startDataGeneratio
     std::vector<std::vector<std::vector<hle::HanabiCardValue>>> simHands,
     bool useSimHands,
     bool beliefMode) const {
-  printf("startDataGeneration_\n");
-  printf("numThread: %d\n", numThread);
-  printf("numEnvPerThread: %d\n", numEnvPerThread);
-  printf("jointSearch: %d\n", jointSearch_);
   assert(context_ == nullptr);
   assert(partner_ != nullptr);
   assert(!(train && beliefMode));
@@ -42,10 +38,8 @@ std::vector<std::shared_ptr<SearchThreadLoop>> RLSearchActor::startDataGeneratio
   int bpIndex = 0;
 
   for (int i = 0; i < numThread; ++i) {
-    printf("thread: %d\n", i);
     std::vector<std::vector<std::unique_ptr<SimulationActor>>> actors(numEnvPerThread);
     for (int j = 0; j < numEnvPerThread; ++j) {
-      printf("environment: %d\n", j);
       int seed = std::abs((int)rng());
 
       std::unique_ptr<SimulationActor> me;
@@ -73,7 +67,6 @@ std::vector<std::shared_ptr<SearchThreadLoop>> RLSearchActor::startDataGeneratio
           partner = std::make_unique<SimulationActor>(partner_->model_, numRlStep, bpIndex);
         }
       } else {
-        printf("bpIndex: %d\n", bpIndex);
         partner = std::make_unique<SimulationActor>(partner_->model_, bpIndex);
       }
 

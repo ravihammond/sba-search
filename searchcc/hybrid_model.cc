@@ -7,7 +7,7 @@
 #include <iostream>
 #include "searchcc/hybrid_model.h"
 
-#define PR true
+#define PR false
 
 namespace search {
 
@@ -65,7 +65,6 @@ void HybridModel::observeBeforeAct(
 
   // Observe for all bp models
   if(PR)printf("bp calling act\n");
-  if(PR)printf("bpIndex_: %d\n", bpIndex_);
   rela::TensorDict feat;
   if (bpIndex_ == -1) {
     for (int i = 0; i < (int)bpModel_.size(); i++) {

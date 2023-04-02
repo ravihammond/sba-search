@@ -23,6 +23,8 @@ cmake-build-debug/
 pyhanabi/game_data/
 pyhanabi/game_data_downloaded/
 pyhanabi/game_data_combined/
+pyhanabi/game_data_downloaded_sad_1/
+pyhanabi/game_data_combined_sad_1/
 pyhanabi/rl_data/
 pyhanabi/rl_data_no_search/
 pyhanabi/rl_data_scores/

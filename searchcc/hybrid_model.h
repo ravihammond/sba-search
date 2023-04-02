@@ -58,10 +58,8 @@ class HybridModel {
     }
   }
 
-  HybridModel(const HybridModel& m)
+  HybridModel(const HybridModel& m, int bpIndex=0)
       : index(m.index)
-      , bpModel_(m.bpModel_)
-      , bpHid_(m.bpHid_)
       , bpPartnerModel_(m.bpPartnerModel_)
       , bpPartnerHid_(m.bpPartnerHid_)
       , rlModel_(m.rlModel_)
@@ -72,7 +70,10 @@ class HybridModel {
       , replayBuffer_(m.replayBuffer_) 
       , r2d2Buffer_(m.r2d2Buffer_) 
       , testPartner_(m.testPartner_) 
-      , bpIndex_(m.bpIndex_) {
+      , bpIndex_(0) {
+    bpModel_ = std::vector<std::shared_ptr<rela::BatchRunner>>(
+               1, m.bpModel_.at(bpIndex));
+    bpHid_ = std::vector<rela::TensorDict>(1, m.bpHid_.at(bpIndex));
     futBp_ = std::vector<rela::Future>(bpModel_.size());
   }
 
@@ -203,6 +204,10 @@ class HybridModel {
 
   int getNumBpModels() {
     return (int)bpModel_.size();
+  }
+
+  int getNumBpHid() {
+    return (int)bpHid_.size();
   }
 
   int getBpIndex() {

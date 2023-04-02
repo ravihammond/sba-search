@@ -1,34 +1,5 @@
 #!/bin/bash
 
-#python rl_search.py \
-    #--save_dir game_data/6-7-splits/test/br/ \
-    #--weight1 ../models/sad_2p_models/sad_2.pthw \
-    #--weight2 ../models/my_models/br_sad_six_1_3_6_7_8_12/model_epoch1000.pthw \
-    #--sad_legacy 1,0 \
-    #--search_partner_weight ../models/sad_2p_models/sad_1.pthw \
-    #--search_partner_sad_legacy 1 \
-    #--player_name sad_2,br_sad_six_1_3_6_7_8_12 \
-    #--data_type test \
-    #--split_type six \
-    #--game_seed 0 \
-    #--seed 0 \
-    #--burn_in_frames 5000 \
-    #--replay_buffer_size 100000 \
-    #--rl_rollout_device cuda:1 \
-    #--bp_rollout_device cuda:1 \
-    #--train_device cuda:0 \
-    #--belief_device cuda:0 \
-    #--rollout_batchsize 8000 \
-    #--num_thread 1 \
-    #--batchsize 128 \
-    #--num_epoch 1 \
-    #--epoch_len 5000 \
-    #--num_samples 50000 \
-    #--skip_search 0 \
-    #--ad_hoc 1 \
-    #--upload_gcloud 1 \
-    #--save_game 1 \
-
 python rl_search.py \
     --save_dir game_data/6-7-splits/test/br/ \
     --weight ../models/my_models/br_sad_six_1_3_6_7_8_12/model_epoch1000.pthw \
@@ -50,15 +21,49 @@ python rl_search.py \
     --belief_device cuda:0 \
     --rollout_batchsize 8000 \
     --num_thread 1 \
+    --num_game_per_thread 18 \
     --batchsize 128 \
     --num_epoch 1 \
-    --epoch_len 1 \
+    --epoch_len 5000 \
     --num_samples 50000 \
     --skip_search 0 \
     --ad_hoc 1 \
-    --upload_gcloud 0 \
-    --save_game 0 \
-    --num_game_per_thread 1 \
-    --num_thread 1 \
-    --num_eval_game 1 \
+    --upload_gcloud 1 \
+    --save_game 1 \
     --verbose 1 \
+
+#python rl_search.py \
+    #--save_dir game_data/6-7-splits/test/br/ \
+    #--weight ../models/my_models/br_sad_six_1_3_6_7_8_12/model_epoch1000.pthw \
+    #--sad_legacy 0 \
+    #--test_partner_weight ../models/sad_2p_models/sad_2.pthw \
+    #--test_partner_sad_legacy 1 \
+    #--search_partner_weight ../models/sad_2p_models/sad_1.pthw,../models/sad_2p_models/sad_3.pthw,../models/sad_2p_models/sad_6.pthw,../models/sad_2p_models/sad_7.pthw,../models/sad_2p_models/sad_8.pthw,../models/sad_2p_models/sad_12.pthw \
+    #--search_partner_sad_legacy 1,1,1,1,1,1 \
+    #--player_name sad_2,br_sad_six_1_3_6_7_8_12 \
+    #--data_type test \
+    #--split_type six \
+    #--game_seed 0 \
+    #--seed 0 \
+    #--burn_in_frames 2 \
+    #--replay_buffer_size 10 \
+    #--rl_rollout_device cuda:1 \
+    #--bp_rollout_device cuda:1 \
+    #--train_device cuda:0 \
+    #--belief_device cuda:0 \
+    #--rollout_batchsize 8000 \
+    #--num_thread 1 \
+    #--batchsize 128 \
+    #--num_epoch 1 \
+    #--epoch_len 1 \
+    #--batchsize 1 \
+    #--num_samples 50000 \
+    #--skip_search 0 \
+    #--ad_hoc 1 \
+    #--upload_gcloud 0 \
+    #--save_game 0 \
+    #--num_game_per_thread 7 \
+    #--num_thread 1 \
+    #--num_eval_game 1 \
+    #--verbose 1 \
+

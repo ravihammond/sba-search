@@ -278,7 +278,6 @@ def train(game, search_actor, replay_buffer, args, eval_seed):
             return None, None
 
     max_possible_score = game.state().max_possible_score()
-    print("START RUN SIM GAMES ####################################")
     bp_scores = search_actor.actor.run_sim_games(
         game, 
         args.num_eval_game, 
@@ -287,12 +286,10 @@ def train(game, search_actor, replay_buffer, args, eval_seed):
         sim_hands, 
         use_sim_hands
     )
-    print("END RUN SIM GAMES ####################################")
     assert np.mean(bp_scores) <= max_possible_score + 1e-5
-    # if max_possible_score - np.mean(bp_scores) < args.threshold:
-        # return np.mean(bp_scores), 0
+    if max_possible_score - np.mean(bp_scores) < args.threshold:
+        return np.mean(bp_scores), 0
 
-    print("STARTING DATA GENERATION ####################################")
     search_actor.actor.start_data_generation(
         game, replay_buffer, args.num_rl_step, sim_hands, use_sim_hands, False
     )
@@ -300,7 +297,6 @@ def train(game, search_actor, replay_buffer, args, eval_seed):
     while replay_buffer.size() < args.burn_in_frames:
         print("warming up replay buffer:", replay_buffer.size())
         time.sleep(1)
-    print("Done: replay buffer size:", replay_buffer.size())
 
     optim = torch.optim.Adam(
         search_actor.rl.online_net.parameters(), lr=args.lr, eps=args.eps

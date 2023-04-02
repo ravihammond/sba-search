@@ -24,7 +24,7 @@ class SimulationActor {
       float gamma,
       int seed)
       : model_(model)
-      , initBpHid_(model.getBpHid())
+      , initBpHid_(model.getBpHid().at(0))
       , initRlHid_(model.getRlHid())
       , initBeliefHid_(model.getBeliefHid())
       , initRlStep_(numRlStep)
@@ -46,8 +46,8 @@ class SimulationActor {
 
   // eval mode, evaluate the mode as is
   SimulationActor(const HybridModel& model, int bpIndex)
-      : model_(model)
-      , initBpHid_(model.getBpHid())
+      : model_(model, bpIndex)
+      , initBpHid_(model.getBpHid().at(0))
       , initRlHid_(model.getRlHid())
       , initBeliefHid_(model.getBeliefHid())
       , initRlStep_(model.getRlStep())
@@ -58,7 +58,6 @@ class SimulationActor {
       , rng_(1) 
       , bpIndex_(bpIndex){
     resetEps();
-    model_.setBpIndex(bpIndex);
   }
 
   // belief mode, evaluate the model as is, collect data
@@ -67,7 +66,7 @@ class SimulationActor {
       const std::shared_ptr<rela::RNNPrioritizedReplay>& replay,
       int nStep)
       : model_(model)
-      , initBpHid_(model.getBpHid())
+      , initBpHid_(model.getBpHid().at(0))
       , initRlHid_(model.getRlHid())
       , initBeliefHid_(model.getBeliefHid())
         // A bit hacky but works for one step training as long as resets are done properly
@@ -90,8 +89,8 @@ class SimulationActor {
       const HybridModel& model, 
       int numRlStep,
       int bpIndex)
-      : model_(model)
-      , initBpHid_(model.getBpHid())
+      : model_(model, bpIndex)
+      , initBpHid_(model.getBpHid().at(0))
       , initRlHid_(model.getRlHid())
       , initBeliefHid_(model.getBeliefHid())
       , initRlStep_(numRlStep)
@@ -106,11 +105,10 @@ class SimulationActor {
       model_.setRlStep(initRlStep_);
     }
     resetEps();
-    //printf("eval rl sim_actor created, model bpIndex: %d\n", model.getBpIndex());
   }
 
   void reset() {
-    model_.setBpHid(initBpHid_);
+    model_.setBpHid(std::vector<rela::TensorDict>(1, initBpHid_));
     model_.setRlHid(initRlHid_);
     if (initRlStep_ > 0) {
       model_.setRlStep(initRlStep_);
@@ -149,7 +147,7 @@ class SimulationActor {
   }
 
   HybridModel model_;
-  const std::vector<rela::TensorDict> initBpHid_;
+  const rela::TensorDict initBpHid_;
   const rela::TensorDict initRlHid_;
   const rela::TensorDict initBeliefHid_;
   const int initRlStep_;

@@ -11,7 +11,7 @@ import pathlib
 from google.cloud import storage
 
 PROJECT = "aiml-reid-research"
-GCLOUD_PATH = "Ravi/hanabi-search-games/"
+GCLOUD_PATH = "Ravi/hanabi-search-games-sad-1/"
 SPLIT_NAME = { "six": "6-7-splits", "one": "1-12-splits" }
 
 

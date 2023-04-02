@@ -13,22 +13,39 @@ import subprocess
 
 def run_rl_search_jobs(args):
     jobs = create_search_jobs(args)
-    print(len(jobs))
     run_jobs(args, jobs)
 
 def create_search_jobs(args):
+    splits = load_json_list(f"train_test_splits/sad_splits_{args.split_type}.json")
+
     game_seeds = get_game_seeds(args.seeds)
-    player_weight = model_to_weight(args, args.model)
-    partner_weight = model_to_weight(args, args.partner_model)
 
     jobs = []
     job = edict()
-    job.player, job.parnter = None, None
-    job.sad_legacy = [0, 0]
+    job.weight = None
+    job.sad_legacy = 0
+    job.test_partner_weight = None
+    job.test_partner_sad_legacy = 0
+    job.search_partner_weight = [None] * 6
+    job.search_partner_sad_legacy = [0] * 6
     job.name = ["", ""]
 
-    job.player, job.sad_legacy[1], job.name[1] = model_to_weight(args, args.model)
-    job.partner, job.sad_legacy[0], job.name[0] = model_to_weight(args, args.partner_model)
+    # player
+    job.weight, job.sad_legacy, job.name[1] = model_to_weight(args, args.model)
+
+    # test partner
+    sad_index = splits[args.split_index][args.data_type][args.partner_index]
+    job.test_partner_weight, job.test_partner_sad_legacy, job.name[0] = \
+            model_to_weight(args, args.partner_model, sad_index)
+
+    # search partners
+    train_indexes = splits[args.split_index]["train"]
+    pprint(train_indexes)
+    for i in range(6):
+        sad_index = train_indexes[i]
+        job.search_partner_weight[i], job.search_partner_sad_legacy[i], _ = \
+                model_to_weight(args, "sad", sad_index)
+
     split_type_map = {"one": "1-12-splits", "six": "6-7-splits"}
     split_type_str = split_type_map[args.split_type]
     job.save_dir = f"game_data/{split_type_str}/{args.data_type}/{args.model}"
@@ -54,7 +71,7 @@ def get_game_seeds(game_seeds):
     return game_seed_list
 
 
-def model_to_weight(args, model):
+def model_to_weight(args, model, partner_index=None):
     splits = load_json_list(f"train_test_splits/sad_splits_{args.split_type}.json")
     indexes = splits[args.split_index]["train"]
     indexes = [x + 1 for x in indexes]
@@ -86,9 +103,8 @@ def model_to_weight(args, model):
 
     elif model == "sad":
         policies = load_json_list("agent_groups/all_sad.json")
-        sad_index = splits[args.split_index][args.data_type][args.partner_index]
-        path = policies[sad_index]
-        player_name = f"sad_{sad_index + 1}"
+        path = policies[partner_index]
+        player_name = f"sad_{partner_index + 1}"
         sad_legacy = 1
 
     return path, sad_legacy, player_name
@@ -109,11 +125,12 @@ def run_jobs(args, jobs):
 def run_job(job):
     command = ["python", "rl_search.py",
         "--save_dir", job.save_dir,
-        "--weight1", job.partner,
-        "--weight2", job.player,
-        "--sad_legacy", ",".join([str(x) for x in job.sad_legacy]),
-        "--search_partner_weight", "../models/sad_2p_models/sad_1.pthw",
-        "--search_partner_sad_legacy", "1",
+        "--weight", job.weight,
+        "--sad_legacy", str(job.sad_legacy),
+        "--test_partner_weight", job.test_partner_weight,
+        "--test_partner_sad_legacy", str(job.test_partner_sad_legacy),
+        "--search_partner_weight", ",".join(job.search_partner_weight),
+        "--search_partner_sad_legacy", ",".join([str(x) for x in job.search_partner_sad_legacy]),
         "--player_name", ",".join(job.name),
         "--data_type", args.data_type,
         "--split_type", args.split_type,
@@ -127,6 +144,7 @@ def run_job(job):
         "--belief_device", job.device1,
         "--rollout_batchsize", "8000",
         "--num_thread", "1",
+        "--num_game_per_thread", "18",
         "--batchsize", "128",
         "--num_epoch", "1",
         "--epoch_len", "5000",
@@ -153,7 +171,7 @@ def parse_args():
     parser.add_argument("--seeds", type=str, default="0")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--skip_search", type=int, default=0)
-    parser.add_argument("--gcloud_dir", type=str, default="hanabi-search-games-sad-1")
+    parser.add_argument("--gcloud_dir", type=str, default="hanabi-search-games-br")
     args = parser.parse_args()
     return args
 
