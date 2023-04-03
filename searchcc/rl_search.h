@@ -38,7 +38,10 @@ class RLSearchActor {
       bool legacyTestSadPartner,
       std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
       bool testPartner,
-      int bpIndex)
+      int bpIndex,
+      bool sba,
+      std::vector<std::vector<int>> colourPermute,
+      std::vector<std::vector<int>> inverseColourPermute)
         : index(index)
         , beliefRunner_(beliefRunner)
         , num_samples_(num_samples)
@@ -48,17 +51,23 @@ class RLSearchActor {
         , nStep_(nStep)
         , gamma_(gamma)
         , rng_(seed)
-        , prevModel_(index, legacySad, legacyTestSadPartner, 
-            replayBuffer, testPartner, bpIndex)
-        , model_(index, legacySad, legacyTestSadPartner, 
-            replayBuffer, testPartner, bpIndex) 
+        , prevModel_(index, legacySad, legacyTestSadPartner, replayBuffer, 
+            testPartner, bpIndex, sba, colourPermute, inverseColourPermute)
+        , model_(index, legacySad, legacyTestSadPartner, replayBuffer, 
+            testPartner, bpIndex, sba, colourPermute, inverseColourPermute) 
         , legacySad_(legacySad) 
         , legacyTestSadPartner_(legacyTestSadPartner) 
-        , testPartner_(testPartner) {
-    std::vector<rela::TensorDict> bpRunnersH0;
+        , testPartner_(testPartner) 
+        , sba_(sba) 
+        , cpRng_(seed) {
+    std::vector<std::vector<rela::TensorDict>> bpRunnersH0;
     for (auto runner: bpRunners) {
       assert(runner != nullptr);
-      bpRunnersH0.push_back(getH0(*runner, 1));
+      std::vector<rela::TensorDict> h0;
+      for (auto permute: colourPermute) {
+        h0.push_back(getH0(*runner, 1));
+      }
+      bpRunnersH0.push_back(h0);
     }
     model_.setBpModel(bpRunners, bpRunnersH0);
 
@@ -90,7 +99,7 @@ class RLSearchActor {
     if (model_.getRlStep() > 0) {
       model_.setRlStep(0);
     }
-    model_.setRlHid(model_.getBpHid()[0]);
+    model_.setRlHid(model_.getBpHid()[0][0]);
   }
 
   void setUseRL(int numStep) {
@@ -256,6 +265,8 @@ class RLSearchActor {
   bool legacyTestSadPartner_;
 
   bool testPartner_;
+  bool sba_;
+  mutable std::mt19937 cpRng_;
 };
 
 }  // namespace search

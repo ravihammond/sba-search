@@ -40,7 +40,6 @@ def create_search_jobs(args):
 
     # search partners
     train_indexes = splits[args.split_index]["train"]
-    pprint(train_indexes)
     for i in range(6):
         sad_index = train_indexes[i]
         job.search_partner_weight[i], job.search_partner_sad_legacy[i], _ = \
@@ -149,9 +148,9 @@ def run_job(job):
         "--num_epoch", "1",
         "--epoch_len", "5000",
         "--num_samples", "50000",
-        "--skip_search", "0",
+        "--skip_search", str(args.skip_search),
         "--ad_hoc", "1",
-        "--upload_gcloud", "1",
+        "--upload_gcloud", str(args.upload_gcloud),
         "--gcloud_dir", args.gcloud_dir,
         "--save_game", "1",
         "--verbose", "1",
@@ -171,6 +170,7 @@ def parse_args():
     parser.add_argument("--seeds", type=str, default="0")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--skip_search", type=int, default=0)
+    parser.add_argument("--upload_gcloud", type=int, default=1)
     parser.add_argument("--gcloud_dir", type=str, default="hanabi-search-games-br")
     args = parser.parse_args()
     return args

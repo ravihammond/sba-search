@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include "searchcc/thread_loop.h"
 
-#define PR false
+#define PR true
 
 namespace search {
 

@@ -167,7 +167,10 @@ PYBIND11_MODULE(hanalearn, m) {
            bool, // legacyTestSadPartner
            std::shared_ptr<rela::RNNPrioritizedReplay>, // replayBuffer
            bool, // testPartner
-           int>()) // bpIndex
+           int, // bpIndex
+           bool, // sba
+           std::vector<std::vector<int>>, // colourPermute
+           std::vector<std::vector<int>>>()) // invColourPermute
       .def("set_compute_config", &search::RLSearchActor::setComputeConfig)
       .def("set_partner", &search::RLSearchActor::setPartner)
       .def("update_belief", &search::RLSearchActor::updateBelief)

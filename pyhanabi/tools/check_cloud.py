@@ -26,6 +26,7 @@ class bcolors:
 
 
 def check_gcloud(args):
+    print(f"checking: {args.dir}\n")
     client = storage.Client(project=PROJECT)
     bucket = client.get_bucket(PROJECT + "-data")
 
@@ -121,7 +122,7 @@ if __name__ == "__main__":
     parser.add_argument("--data_type", type=str, default="test")
     parser.add_argument("--seeds", type=str, default="0-100")
     parser.add_argument("--verbose", type=int, default=0)
-    parser.add_argument("--dir", type=str, default="hanabi-search-games-sad-1")
+    parser.add_argument("--dir", type=str, default="hanabi-search-games-br")
     args = parser.parse_args()
 
     args.model = args.model.split(",")

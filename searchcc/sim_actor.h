@@ -22,7 +22,8 @@ class SimulationActor {
       const std::shared_ptr<rela::RNNPrioritizedReplay>& replay,
       int nStep,
       float gamma,
-      int seed)
+      int seed,
+      std::mt19937& cpRng)
       : model_(model)
       , initBpHid_(model.getBpHid().at(0))
       , initRlHid_(model.getRlHid())
@@ -32,7 +33,10 @@ class SimulationActor {
       , beliefMode_(false)
       , replayBuffer_(replay)
       , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(nStep, 2 * numRlStep, gamma))
-      , rng_(seed) {
+      , rng_(seed) 
+      , initColorPermute_(model.getColourPermute()) 
+      , initInverseColorPermute_(model.getInverseColourPermute()) 
+      , cpRng_(cpRng) {
     // do not train with RL when the model is using RL
     assert(model.getRlStep() == 0);
     assert(replay != nullptr);
@@ -45,9 +49,9 @@ class SimulationActor {
   }
 
   // eval mode, evaluate the mode as is
-  SimulationActor(const HybridModel& model, int bpIndex)
+  SimulationActor(const HybridModel& model, int bpIndex, std::mt19937& cpRng)
       : model_(model, bpIndex)
-      , initBpHid_(model.getBpHid().at(0))
+      , initBpHid_(model.getBpHid().at(bpIndex))
       , initRlHid_(model.getRlHid())
       , initBeliefHid_(model.getBeliefHid())
       , initRlStep_(model.getRlStep())
@@ -56,15 +60,20 @@ class SimulationActor {
       , replayBuffer_(nullptr)
       , r2d2Buffer_(nullptr)
       , rng_(1) 
-      , bpIndex_(bpIndex){
+      , bpIndex_(bpIndex) 
+      , initColorPermute_(model.getColourPermute()) 
+      , initInverseColorPermute_(model.getInverseColourPermute()) 
+      , cpRng_(cpRng) {
     resetEps();
+    resetBp();
   }
 
   // belief mode, evaluate the model as is, collect data
   SimulationActor(
       const HybridModel& model,
       const std::shared_ptr<rela::RNNPrioritizedReplay>& replay,
-      int nStep)
+      int nStep,
+      std::mt19937& cpRng)
       : model_(model)
       , initBpHid_(model.getBpHid().at(0))
       , initRlHid_(model.getRlHid())
@@ -77,9 +86,11 @@ class SimulationActor {
         // also hard coded for one step training
         // TODO: FIXME, this used to be std::make_unique<rela::R2D2Buffer>(nStep, 2, 1.0, true)
       , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(nStep, 2, 1.0))
-      , rng_(1) {
+      , rng_(1) 
+      , initColorPermute_(model.getColourPermute()) 
+      , initInverseColorPermute_(model.getInverseColourPermute()) 
+      , cpRng_(cpRng) {
     resetEps();
-    // r2d2Buffer_->init(initRlHid_);
     r2d2Buffer_->init(initBeliefHid_);
     model_.setRlStep(initRlStep_);
   }
@@ -88,9 +99,10 @@ class SimulationActor {
   SimulationActor(
       const HybridModel& model, 
       int numRlStep,
-      int bpIndex)
+      int bpIndex,
+      std::mt19937& cpRng)
       : model_(model, bpIndex)
-      , initBpHid_(model.getBpHid().at(0))
+      , initBpHid_(model.getBpHid().at(bpIndex))
       , initRlHid_(model.getRlHid())
       , initBeliefHid_(model.getBeliefHid())
       , initRlStep_(numRlStep)
@@ -99,16 +111,20 @@ class SimulationActor {
       , replayBuffer_(nullptr)
       , r2d2Buffer_(nullptr)
       , rng_(1)
-      , bpIndex_(bpIndex) {
+      , bpIndex_(bpIndex) 
+      , initColorPermute_(model.getColourPermute())
+      , initInverseColorPermute_(model.getInverseColourPermute()) 
+      , cpRng_(cpRng) {
     assert(model_.getRlStep() == 0);
     if (initRlStep_ > 0) {
       model_.setRlStep(initRlStep_);
     }
     resetEps();
+    resetBp();
   }
 
   void reset() {
-    model_.setBpHid(std::vector<rela::TensorDict>(1, initBpHid_));
+    resetBp();
     model_.setRlHid(initRlHid_);
     if (initRlStep_ > 0) {
       model_.setRlStep(initRlStep_);
@@ -129,6 +145,24 @@ class SimulationActor {
     needReset_ = false;
   }
 
+  void resetBp() {
+    std::uniform_int_distribution<int> dist(0, initColorPermute_.size() - 1);
+    int cpIndex = dist(cpRng_);
+
+    std::stringstream permute;
+    std::copy(initColorPermute_[cpIndex].begin(), initColorPermute_[cpIndex].end(), 
+              std::ostream_iterator<int>(permute, " "));
+    printf("colour permute index: %d [ %s]\n", cpIndex, permute.str().c_str());
+
+
+    model_.setBpHid(std::vector<std::vector<rela::TensorDict>>(1, 
+          std::vector<rela::TensorDict>(1, initBpHid_[cpIndex])));
+    model_.setColourPermute(std::vector<std::vector<int>>(1, 
+          initColorPermute_[cpIndex]));
+    model_.setInverseColourPermute(std::vector<std::vector<int>>(1, 
+          initInverseColorPermute_[cpIndex]));
+  }
+
   void observeBeforeAct(const GameSimulator& env);
 
   int decideAction(const GameSimulator& env);
@@ -147,7 +181,7 @@ class SimulationActor {
   }
 
   HybridModel model_;
-  const rela::TensorDict initBpHid_;
+  const std::vector<rela::TensorDict> initBpHid_;
   const rela::TensorDict initRlHid_;
   const rela::TensorDict initBeliefHid_;
   const int initRlStep_;
@@ -168,5 +202,8 @@ class SimulationActor {
   int callOrder_ = 0;
   bool needReset_ = false;
   int bpIndex_ = 0;
+  const std::vector<std::vector<int>> initColorPermute_;
+  const std::vector<std::vector<int>> initInverseColorPermute_;
+  std::mt19937& cpRng_;
 };
 }  // namespace search

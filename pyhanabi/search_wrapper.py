@@ -39,6 +39,9 @@ class SearchWrapper:
         log_bsize_freq=-1,
         replay_buffer=None,
         is_test_partner=1,
+        sba=0,
+        colour_permute=None,
+        inverse_colour_permute=None,
     ):
         self.player_idx = player_idx
         self.public_belief = public_belief
@@ -59,6 +62,9 @@ class SearchWrapper:
         self.bp_rollout_device = bp_rollout_device
         self.bp_sad_legacy = bp_sad_legacy
         self.test_partner_sad_legacy = test_partner_sad_legacy
+        self.sba = sba
+        self.colour_permute = colour_permute
+        self.inverse_colour_permute = inverse_colour_permute
 
         self.setup_bp(bp_weight_files, bp_sad_legacy, bp_rollout_device)
         self.setup_rl(rl_weight_file, rl_sad_legacy, train_device, rl_rollout_device)
@@ -209,6 +215,9 @@ class SearchWrapper:
             self.replay_buffer,
             self.is_test_partner,
             -1 if self.is_test_partner else 0,
+            self.sba,
+            self.colour_permute,
+            self.inverse_colour_permute,
         )
         self.actor.set_compute_config(self.num_thread, self.num_game_per_thread)
 

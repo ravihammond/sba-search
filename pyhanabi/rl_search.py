@@ -16,6 +16,7 @@ import torch
 import numpy as np
 from datetime import datetime
 import pathlib
+import itertools
 
 # c++ backend
 import set_path
@@ -70,6 +71,20 @@ def run_rl_search(args):
     rl_sad_legacy = [0, args.sad_legacy]
     rl_rollout_device = [None, args.rl_rollout_device]
 
+    # SBA Colour permutations
+    sba = [args.sba, 0]
+    colour_permute = list(itertools.permutations([0,1,2,3,4]))
+    colour_permute = [list(x) for x in colour_permute]
+    inverse_colour_permute = []
+    for permute in colour_permute:
+        inv_permute = [0,1,2,3,4]
+        inv_permute = sorted(inv_permute, key=lambda x: permute[x])
+        for i in range(5):
+            assert(inv_permute[permute[i]] == i)
+        inverse_colour_permute.append(inv_permute)
+    colour_permute_all = [colour_permute, [colour_permute[0]]]
+    inverse_colour_permute_all = [inverse_colour_permute, [inverse_colour_permute[0]]]
+
     search_wrapper = []
     for i in range(2):
         print("Setup Wrapper", i)
@@ -96,6 +111,9 @@ def run_rl_search(args):
             args.num_game_per_thread,
             replay_buffer=replay_buffer,
             is_test_partner=is_test_partner[i],
+            sba=sba[i],
+            colour_permute=colour_permute_all[i],
+            inverse_colour_permute=inverse_colour_permute_all[i],
         ))
         print()
 
@@ -287,14 +305,16 @@ def train(game, search_actor, replay_buffer, args, eval_seed):
         use_sim_hands
     )
     assert np.mean(bp_scores) <= max_possible_score + 1e-5
-    if max_possible_score - np.mean(bp_scores) < args.threshold:
-        return np.mean(bp_scores), 0
+    # if max_possible_score - np.mean(bp_scores) < args.threshold:
+        # return np.mean(bp_scores), 0
 
     search_actor.actor.start_data_generation(
         game, replay_buffer, args.num_rl_step, sim_hands, use_sim_hands, False
     )
 
     while replay_buffer.size() < args.burn_in_frames:
+        if replay_buffer.size() == 4:
+            sys.exit()
         print("warming up replay buffer:", replay_buffer.size())
         time.sleep(1)
 
@@ -499,6 +519,7 @@ def parse_args():
     parser.add_argument("--save_game", type=int, default=0)
     parser.add_argument("--save_dir", type=str, default="game_data/default")
     parser.add_argument("--split_type", type=str, default="six")
+    parser.add_argument("--sba", type=int, default=0)
 
     # Model weights
     parser.add_argument("--weight", type=str, required=True)

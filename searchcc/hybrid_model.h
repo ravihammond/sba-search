@@ -39,16 +39,23 @@ class HybridModel {
       int index, 
       std::vector<bool> legacySad,
       bool legacySadTestPartner,
-     std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
+      std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
       bool testPartner,
-      int bpIndex)
+      int bpIndex,
+      bool sba,
+      std::vector<std::vector<int>> colourPermute,
+      std::vector<std::vector<int>> inverseColourPermute)
       : index(index)
       , rlStep_(0) 
       , legacySad_(legacySad)
       , legacySadTestPartner_(legacySadTestPartner)
       , replayBuffer_(std::move(replayBuffer))
       , testPartner_(testPartner) 
-      , bpIndex_(bpIndex) {
+      , bpIndex_(bpIndex) 
+      , sba_(sba) 
+      , colourPermute_(colourPermute) 
+      , inverseColourPermute_(inverseColourPermute) 
+      , cpIndex_(0) {
     if (testPartner_) {
       r2d2Buffer_ = std::make_shared<rela::R2D2Buffer>(
             legacySadTestPartner ? 1 : 3, 80, 0.999);
@@ -58,7 +65,7 @@ class HybridModel {
     }
   }
 
-  HybridModel(const HybridModel& m, int bpIndex=0)
+  HybridModel(const HybridModel& m, int bpIndex=0, int cpIndex=0)
       : index(m.index)
       , bpPartnerModel_(m.bpPartnerModel_)
       , bpPartnerHid_(m.bpPartnerHid_)
@@ -70,11 +77,23 @@ class HybridModel {
       , replayBuffer_(m.replayBuffer_) 
       , r2d2Buffer_(m.r2d2Buffer_) 
       , testPartner_(m.testPartner_) 
-      , bpIndex_(0) {
+      , bpIndex_(0) 
+      , colourPermute_(m.colourPermute_) 
+      , inverseColourPermute_(m.inverseColourPermute_) 
+      , cpIndex_(0) {
     bpModel_ = std::vector<std::shared_ptr<rela::BatchRunner>>(
                1, m.bpModel_.at(bpIndex));
-    bpHid_ = std::vector<rela::TensorDict>(1, m.bpHid_.at(bpIndex));
-    futBp_ = std::vector<rela::Future>(bpModel_.size());
+
+    bpHid_ = std::vector<std::vector<rela::TensorDict>>(1, 
+        m.bpHid_[bpIndex]);
+    
+    colourPermute_ = std::vector<std::vector<int>>(1, m.colourPermute_[cpIndex]);
+
+    inverseColourPermute_ = std::vector<std::vector<int>>(1, 
+        m.inverseColourPermute_[cpIndex]);
+
+    futBp_ = std::vector<std::vector<rela::Future>>(bpModel_.size(), 
+        std::vector<rela::Future>(colourPermute_.size()));
   }
 
   HybridModel& operator=(const HybridModel& m) {
@@ -97,14 +116,16 @@ class HybridModel {
 
   void setBpModel(std::vector<std::shared_ptr<rela::BatchRunner>> bpModel) {
     bpModel_ = bpModel;
-    futBp_ = std::vector<rela::Future>(bpModel.size());
+    futBp_ = std::vector<std::vector<rela::Future>>(bpModel.size(),
+        std::vector<rela::Future>(colourPermute_.size()));
   }
 
   void setBpModel(std::vector<std::shared_ptr<rela::BatchRunner>> bpModel, 
-      std::vector<rela::TensorDict> bpHid) {
+      std::vector<std::vector<rela::TensorDict>> bpHid) {
     bpModel_ = bpModel;
     bpHid_ = bpHid;
-    futBp_ = std::vector<rela::Future>(bpModel.size());
+    futBp_ = std::vector<std::vector<rela::Future>>(bpModel.size(),
+        std::vector<rela::Future>(colourPermute_.size()));
   }
 
   void setBpPartnerModel(std::shared_ptr<rela::BatchRunner> bpPartnerModel) {
@@ -155,11 +176,11 @@ class HybridModel {
     rlStep_ = rlStep;
   }
 
-  const std::vector<rela::TensorDict>& getBpHid() const {
+  const std::vector<std::vector<rela::TensorDict>>& getBpHid() const {
     return bpHid_;
   }
 
-  void setBpHid(const std::vector<rela::TensorDict>& bpHid) {
+  void setBpHid(const std::vector<std::vector<rela::TensorDict>>& bpHid) {
     bpHid_ = bpHid;
   }
 
@@ -218,17 +239,37 @@ class HybridModel {
     bpIndex_ = bpIndex;
   }
 
+  std::vector<std::vector<rela::TensorDict>> getBpHid() {
+    return bpHid_;
+  }
+
+  const std::vector<std::vector<int>>& getColourPermute() const {
+    return colourPermute_;
+  }
+
+  const std::vector<std::vector<int>>& getInverseColourPermute() const {
+    return inverseColourPermute_;
+  }
+
+  void setColourPermute(const std::vector<std::vector<int>>& colourPermute) {
+    colourPermute_ = colourPermute;
+  }
+
+  void setInverseColourPermute(const std::vector<std::vector<int>>& inverseColourPermute) {
+    inverseColourPermute_ = inverseColourPermute;
+  }
+
   const bool hideAction = false;
   const int index;
 
  private:
   rela::TensorDict observeBp(const GameSimulator& env, bool testActing, 
-      int bpIndex_, rela::TensorDict* retFeat = nullptr);
+      int bpIndex, int cpIndex, rela::TensorDict* retFeat = nullptr);
 
   std::vector<std::shared_ptr<rela::BatchRunner>> bpModel_;
-  std::vector<rela::TensorDict> bpHid_;
+  std::vector<std::vector<rela::TensorDict>> bpHid_;
   rela::TensorDict belief_h0_;
-  std::vector<rela::Future> futBp_;
+  std::vector<std::vector<rela::Future>> futBp_;
 
   std::shared_ptr<rela::BatchRunner> bpPartnerModel_;
   rela::TensorDict bpPartnerHid_;
@@ -243,14 +284,14 @@ class HybridModel {
 
   std::vector<bool> legacySad_;
   bool legacySadTestPartner_;
-
   std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer_;
   std::shared_ptr<rela::R2D2Buffer> r2d2Buffer_;
-
   bool testPartner_;
-
   std::unordered_map<std::string, std::string> chosenMoves_;
-
   int bpIndex_;
+  bool sba_;
+  std::vector<std::vector<int>> colourPermute_;
+  std::vector<std::vector<int>> inverseColourPermute_;
+  int cpIndex_;
 };
 }  // namespace search

@@ -5,7 +5,7 @@
 // LICENSE file in the root directory of this source tree.
 //
 #include <iostream>
-#include "stdio.h"
+#include <stdio.h>
 #include "searchcc/rl_search.h"
 #include <chrono>
 
@@ -24,6 +24,9 @@ std::vector<std::shared_ptr<SearchThreadLoop>> RLSearchActor::startDataGeneratio
     std::vector<std::vector<std::vector<hle::HanabiCardValue>>> simHands,
     bool useSimHands,
     bool beliefMode) const {
+  printf("numThread: %d\n", numThread);
+  printf("numEnvPerThread: %d\n", numEnvPerThread);
+  printf("numGame: %d\n", numGame);
   assert(context_ == nullptr);
   assert(partner_ != nullptr);
   assert(!(train && beliefMode));
@@ -32,42 +35,51 @@ std::vector<std::shared_ptr<SearchThreadLoop>> RLSearchActor::startDataGeneratio
   std::vector<std::shared_ptr<SearchThreadLoop>> threads;
 
   auto ptr =
-      std::make_shared<std::vector<std::vector<std::vector<hle::HanabiCardValue>>>>(
-          simHands);
+      std::make_shared<std::vector<std::vector<std::vector<
+        hle::HanabiCardValue>>>>(simHands);
 
   int bpIndex = 0;
 
   for (int i = 0; i < numThread; ++i) {
-    std::vector<std::vector<std::unique_ptr<SimulationActor>>> actors(numEnvPerThread);
+    printf("thread: %d\n", i);
+    std::vector<std::vector<std::unique_ptr<SimulationActor>>> 
+        actors(numEnvPerThread);
     for (int j = 0; j < numEnvPerThread; ++j) {
+      printf("env: %d\n", j);
       int seed = std::abs((int)rng());
 
       std::unique_ptr<SimulationActor> me;
 
+      printf("actor: self\n");
       if (train) {
         me = std::make_unique<SimulationActor>(
-            model_, numRlStep, epsList, replay, nStep_, gamma_, seed);
+            model_, numRlStep, epsList, replay, nStep_, gamma_, seed, cpRng_);
       } else if (beliefMode) {
-        me = std::make_unique<SimulationActor>(model_, replay, nStep_);
+        me = std::make_unique<SimulationActor>(model_, replay, nStep_, cpRng_);
       } else {
-        me = std::make_unique<SimulationActor>(model_, numRlStep, 0);
+        me = std::make_unique<SimulationActor>(model_, numRlStep, 0, cpRng_);
       }
 
       std::unique_ptr<SimulationActor> partner;
 
+      printf("actor: partner\n");
       if (jointSearch_) {
         if (train) {
           // we also need data from out partner's perspective
           partner = std::make_unique<SimulationActor>(
-              partner_->model_, numRlStep, epsList, replay, nStep_, gamma_, seed);
+              partner_->model_, numRlStep, epsList, 
+              replay, nStep_, gamma_, seed, cpRng_);
         } else if (beliefMode) {
-          partner = std::make_unique<SimulationActor>(partner_->model_, replay, nStep_);
+          partner = std::make_unique<SimulationActor>(
+              partner_->model_, replay, nStep_, cpRng_);
         } else {
           // partner also uses rl in evaluation
-          partner = std::make_unique<SimulationActor>(partner_->model_, numRlStep, bpIndex);
+          partner = std::make_unique<SimulationActor>(
+              partner_->model_, numRlStep, bpIndex, cpRng_);
         }
       } else {
-        partner = std::make_unique<SimulationActor>(partner_->model_, bpIndex);
+        partner = std::make_unique<SimulationActor>(
+            partner_->model_, bpIndex, cpRng_);
       }
 
       // in fact, order of the actor does not matter

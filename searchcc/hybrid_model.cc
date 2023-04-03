@@ -5,9 +5,12 @@
 // LICENSE file in the root directory of this source tree.
 #include <stdio.h>
 #include <iostream>
+#include <algorithm>
+#include <vector>
+#include <sstream>
 #include "searchcc/hybrid_model.h"
 
-#define PR false
+#define PR true
 
 namespace search {
 
@@ -19,7 +22,7 @@ rela::Future HybridModel::asyncComputeAction(const GameSimulator& env) const {
     input["eps"] = torch::tensor(std::vector<float>{0});
     return rlModel_->call("act", input);
   } else {
-    addHid(input, bpHid_[bpIndex_]);
+    addHid(input, bpHid_[bpIndex_][cpIndex_]);
     return bpModel_[bpIndex_]->call("act", input);
   }
 }
@@ -30,7 +33,7 @@ rela::Future HybridModel::asyncComputeTarget(
   auto feat = observe(env.state(), index, false, legacySad_[0]);
   feat["reward"] = torch::tensor(reward);
   feat["terminal"] = torch::tensor((float)terminal);
-  addHid(feat, bpHid_[bpIndex_]);
+  addHid(feat, bpHid_[bpIndex_][cpIndex_]);
   return bpModel_[bpIndex_]->call("compute_target", feat);
 }
 
@@ -46,7 +49,7 @@ void HybridModel::initialise(bool testActing) {
     if (testPartner_) {
       hid = bpPartnerHid_;
     } else if (bpIndex_ != -1) {
-      hid = bpHid_[bpIndex_];
+      hid = bpHid_[bpIndex_][cpIndex_];
     }
 
     if (r2d2Buffer_ != nullptr) {
@@ -68,10 +71,12 @@ void HybridModel::observeBeforeAct(
   rela::TensorDict feat;
   if (bpIndex_ == -1) {
     for (int i = 0; i < (int)bpModel_.size(); i++) {
-      observeBp(env, testActing, i);
+      for (int j = 0; j < (int)colourPermute_.size(); j++) {
+        observeBp(env, testActing, i, j);
+      }
     }
-  } else {
-    feat = observeBp(env, testActing, bpIndex_, retFeat);
+  } else { 
+    feat = observeBp(env, testActing, bpIndex_, 0, retFeat);
   }
 
   // forward bp regardless of whether rl is used
@@ -110,6 +115,7 @@ rela::TensorDict HybridModel::observeBp(
     const GameSimulator& env, 
     bool testActing, 
     int bpIndex, 
+    int cpIndex, 
     rela::TensorDict* retFeat) {
   auto feat = observe(env.state(), index, hideAction, legacySad_[bpIndex]);
 
@@ -124,9 +130,13 @@ rela::TensorDict HybridModel::observeBp(
     r2d2Buffer_->pushObs(input);
   }
 
-  addHid(input, bpHid_[bpIndex]);
+  addHid(input, bpHid_[bpIndex][cpIndex]);
+  std::stringstream permute;
+  std::copy(colourPermute_[cpIndex].begin(), colourPermute_[cpIndex].end(), 
+            std::ostream_iterator<int>(permute, " "));
+  if(PR)printf("Permute: %d [ %s], ", cpIndex, permute.str().c_str());
   if(PR)bpModel_[bpIndex]->printModel();
-  futBp_[bpIndex] = bpModel_[bpIndex]->call("act", input);
+  futBp_[bpIndex][cpIndex] = bpModel_[bpIndex]->call("act", input);
 
   return feat;
 }
@@ -142,12 +152,19 @@ int HybridModel::decideAction(
   rela::TensorDict bpReply;
   if (bpIndex_ == -1) {
     for (int i = 0; i < (int)bpHid_.size(); i++) {
-      auto reply = futBp_[i].get();
-      updateHid(reply, bpHid_[i]);
+      for (int j = 0; j < (int)colourPermute_.size(); j++) {
+        auto reply = futBp_[i][j].get();
+        updateHid(reply, bpHid_[i][j]);
+      }
     }
   } else {
-    bpReply = futBp_[bpIndex_].get();
-    updateHid(bpReply, bpHid_[bpIndex_]);
+    printf("bpIndex: %d, cpIndex: %d\n", bpIndex_, cpIndex_);
+    printf("futBp_ size: %d\n", (int)futBp_.size());
+    if (futBp_.size() > 0) {
+      printf("futBp_[0] size: %d\n", (int)futBp_[0].size());
+    }
+    bpReply = futBp_[bpIndex_][cpIndex_].get();
+    updateHid(bpReply, bpHid_[bpIndex_][cpIndex_]);
   }
 
   // Get partner bp results, and update hid

@@ -111,33 +111,34 @@ def batch_to_dataset(args, batch1, batch2, date_time, game_data):
         print("num columns:", len(list(df.columns.values)))
 
     columns = [
-        # "game",
+        "game",
         "player",
-        # "partner",
+        "partner",
         "turn",
+        "card_0",
+        "card_1",
+        "card_2",
+        "card_3",
+        "card_4",
         "action",
-        "rl_action",
-        "rl_action_chosen",
-        "rl_score",
-        "bp_score",
-        "rl_bp_diff",
-        "rl_bp_diff",
-        "diff_threshold",
+        "red_fireworks",
+        "yellow_fireworks",
+        "green_fireworks",
+        "white_fireworks",
+        "blue_fireworks",
+        # "rl_action",
+        # "rl_action_chosen",
+        # "rl_score",
+        # "bp_score",
+        # "rl_bp_diff",
+        # "rl_bp_diff",
+        # "diff_threshold",
         # "rl_actor",
-        # "card_0",
-        # "card_1",
-        # "card_2",
-        # "card_3",
-        # "card_4",
-        # "red_fireworks",
-        # "yellow_fireworks",
-        # "green_fireworks",
-        # "white_fireworks",
-        # "blue_fireworks",
     ]
 
     # pprint(df.columns.tolist())
     # print(df[columns].to_string(index=False))
+    # print(df.to_string(index=False))
 
     return df
 
@@ -205,7 +206,7 @@ def meta_data(args, batch, player, date_time):
     game_names = []
 
     for i in range(priv_s.shape[1]):
-        game_names.append(f"{args.player_name[0]}_vs_{args.player_name[1]}_game_{i}")
+        game_names.append(f"{args.player_name[1]}_vs_{args.player_name[0]}_game_{i}")
 
     data = np.array(game_names, )
     data = np.repeat(data, priv_s.shape[0])
@@ -251,7 +252,8 @@ def turn_data(args, batch):
 def extract_obs(args, obs, player):
     df = pd.DataFrame()
 
-    if args.sad_legacy[player]:
+    if (player == 0 and args.test_partner_sad_legacy) or \
+       (player == 1 and args.sad_legacy):
         # Make sad priv_s the same as OBL priv_s
         priv_s = obs["priv_s"][:, :, 125:783]
     else:
