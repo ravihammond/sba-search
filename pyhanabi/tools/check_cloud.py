@@ -85,11 +85,13 @@ def check_files(args, client, bucket, split_type, data_type, split_index, model)
         found_list_str = "\t".join(found_list)
         missing_games = []
         found_games = []
+        missing_seeds = []
 
         for seed in args.seeds:
             game_str = f"game_{seed}"
             if game_str not in found_list_str:
                 missing_games.append(game_str)
+                missing_seeds.append(seed)
             else:
                 found_games.append(game_str)
 
@@ -100,10 +102,11 @@ def check_files(args, client, bucket, split_type, data_type, split_index, model)
         else:
             print(bcolors.WARNING + f"Partial games finished, {len(missing_games)} games left.")
             if args.verbose:
-                for game_str in found_games:
-                    print(bcolors.OKGREEN + game_str + bcolors.ENDC)
-                for game_str in missing_games:
-                    print(bcolors.FAIL + game_str + bcolors.ENDC)
+                for i, missing_seed in enumerate(missing_seeds):
+                    print(f"{missing_seed}", end="")
+                    if i < len(missing_seeds) - 1:
+                        print(",", end="")
+                print()
             print(bcolors.ENDC, end="")
 
 

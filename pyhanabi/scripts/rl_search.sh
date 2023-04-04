@@ -54,16 +54,18 @@ python rl_search.py \
     --belief_device cuda:0 \
     --rollout_batchsize 8000 \
     --num_thread 1 \
-    --num_game_per_thread 2 \
+    --num_game_per_thread 18 \
     --batchsize 128 \
     --num_epoch 1 \
-    --epoch_len 1 \
-    --num_samples 1 \
-    --num_eval_game 1 \
-    --skip_search 0 \
+    --epoch_len 5000 \
+    --num_samples 50000 \
+    --num_eval_game 5000 \
+    --skip_search 1 \
     --ad_hoc 1 \
     --upload_gcloud 0 \
     --save_game 0 \
     --verbose 1 \
     --sba 1 \
 
+    #--search_partner_weight ../models/sad_2p_models/sad_1.pthw,../models/sad_2p_models/sad_3.pthw \
+    #--search_partner_sad_legacy 1,1 \

@@ -32,7 +32,7 @@ int SimulationActor::decideAction(const GameSimulator& env) {
   }
 
   rela::TensorDict action;
-  auto aid = model_.decideAction(env, false, false, &action);
+  auto aid = model_.decideAction(env, false, &action);
   r2d2Buffer_->pushAction(action);
   return aid;
 }

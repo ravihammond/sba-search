@@ -18,8 +18,6 @@ pyhanabi/similarity_data/
 pyhanabi/temp/
 pyhanabi/data/
 pyhanabi/br_and_sba_no_search/
-pyhanabi/game_data/
-pyhanabi/game_data_downloaded/
-pyhanabi/game_data_combined/
+pyhanabi/game_data*
 wandb_api_key.txt
 

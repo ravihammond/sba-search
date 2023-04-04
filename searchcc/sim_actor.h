@@ -152,8 +152,6 @@ class SimulationActor {
     std::stringstream permute;
     std::copy(initColorPermute_[cpIndex].begin(), initColorPermute_[cpIndex].end(), 
               std::ostream_iterator<int>(permute, " "));
-    printf("colour permute index: %d [ %s]\n", cpIndex, permute.str().c_str());
-
 
     model_.setBpHid(std::vector<std::vector<rela::TensorDict>>(1, 
           std::vector<rela::TensorDict>(1, initBpHid_[cpIndex])));

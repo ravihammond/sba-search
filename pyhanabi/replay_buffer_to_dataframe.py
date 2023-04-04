@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 
-
 CARD_ID_TO_STRING = np.array([
     "R1",
     "R2",

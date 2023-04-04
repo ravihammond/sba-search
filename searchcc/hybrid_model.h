@@ -78,6 +78,7 @@ class HybridModel {
       , r2d2Buffer_(m.r2d2Buffer_) 
       , testPartner_(m.testPartner_) 
       , bpIndex_(0) 
+      , sba_(m.sba_) 
       , colourPermute_(m.colourPermute_) 
       , inverseColourPermute_(m.inverseColourPermute_) 
       , cpIndex_(0) {
@@ -163,7 +164,6 @@ class HybridModel {
 
   int decideAction(
       const GameSimulator& env, 
-      bool verbose, 
       bool testActing = false,
       rela::TensorDict* retAction = nullptr);
 
@@ -265,6 +265,15 @@ class HybridModel {
  private:
   rela::TensorDict observeBp(const GameSimulator& env, bool testActing, 
       int bpIndex, int cpIndex, rela::TensorDict* retFeat = nullptr);
+
+  rela::TensorDict getBpReply(const GameSimulator& env);
+
+  int getRlAction(const GameSimulator& env, rela::TensorDict rlReply, 
+      rela::TensorDict bpReply, bool testActing, rela::TensorDict* retAction);
+
+  int getBpAction(const GameSimulator& env, rela::TensorDict bpReply, 
+      rela::TensorDict bpPartnerReply, bool testActing, 
+      rela::TensorDict* retAction);
 
   std::vector<std::shared_ptr<rela::BatchRunner>> bpModel_;
   std::vector<std::vector<rela::TensorDict>> bpHid_;

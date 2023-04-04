@@ -117,7 +117,8 @@ rela::TensorDict HybridModel::observeBp(
     int bpIndex, 
     int cpIndex, 
     rela::TensorDict* retFeat) {
-  auto feat = observe(env.state(), index, hideAction, legacySad_[bpIndex]);
+  auto feat = observe(env.state(), index, hideAction, legacySad_[bpIndex],
+      sba_, colourPermute_[cpIndex], inverseColourPermute_[cpIndex]);
 
   if (retFeat != nullptr) {
     *retFeat = feat;
@@ -134,7 +135,9 @@ rela::TensorDict HybridModel::observeBp(
   std::stringstream permute;
   std::copy(colourPermute_[cpIndex].begin(), colourPermute_[cpIndex].end(), 
             std::ostream_iterator<int>(permute, " "));
-  if(PR)printf("Permute: %d [ %s], ", cpIndex, permute.str().c_str());
+  if(PR)printf("%3d [ %s], ", cpIndex, permute.str().c_str());
+  if(PR)std::cout << "before: " << 
+    bpHid_[bpIndex][cpIndex]["h0"].index({0,0,0}).item<float>() << ", ";
   if(PR)bpModel_[bpIndex]->printModel();
   futBp_[bpIndex][cpIndex] = bpModel_[bpIndex]->call("act", input);
 
@@ -143,49 +146,33 @@ rela::TensorDict HybridModel::observeBp(
 
 int HybridModel::decideAction(
     const GameSimulator& env, 
-    bool verbose, 
     bool testActing, 
     rela::TensorDict* retAction) {
-  (void)verbose;
   // Get bp results, and update hid
   int action = -1;
-  rela::TensorDict bpReply;
-  if (bpIndex_ == -1) {
-    for (int i = 0; i < (int)bpHid_.size(); i++) {
-      for (int j = 0; j < (int)colourPermute_.size(); j++) {
-        auto reply = futBp_[i][j].get();
-        updateHid(reply, bpHid_[i][j]);
-      }
-    }
-  } else {
-    printf("bpIndex: %d, cpIndex: %d\n", bpIndex_, cpIndex_);
-    printf("futBp_ size: %d\n", (int)futBp_.size());
-    if (futBp_.size() > 0) {
-      printf("futBp_[0] size: %d\n", (int)futBp_[0].size());
-    }
-    bpReply = futBp_[bpIndex_][cpIndex_].get();
-    updateHid(bpReply, bpHid_[bpIndex_][cpIndex_]);
-  }
+  rela::TensorDict rlReply;
+  rela::TensorDict bpPartnerReply;
+  rela::TensorDict bpReply = getBpReply(env);
 
   // Get partner bp results, and update hid
-  rela::TensorDict bpPartnerReply;
   if (testActing && testPartner_) {
     bpPartnerReply = futBpPartner_.get();
     updateHid(bpPartnerReply, bpPartnerHid_);
   }
 
-  // Get rl results
-  rela::TensorDict rlReply;
+  // Record RL Search actor stats
   if (rlStep_ > 0 || (testActing && !testPartner_)) {
     rlReply = futRl_.get();
-    auto rlaction = rlReply.at("a").item<int64_t>();
-    auto move = env.state().ParentGame()->GetMove(rlaction);
+    int rlAction = rlReply.at("a").item<int64_t>();
+    auto move = env.state().ParentGame()->GetMove(rlAction);
     if (testActing) {
       chosenMoves_["rl action"] = move.ToString();
-
       if (replayBuffer_ != nullptr) {
         for (auto& kv: rlReply) {
-        if (kv.first != "a" && kv.first != "all_q") continue;
+          // Only store stats for actions and q values
+          if (kv.first != "a" && kv.first != "all_q") {
+            continue;
+          }
           std::string newKey = "rl_" + kv.first;
           bpReply[newKey] = kv.second;
         }
@@ -194,9 +181,13 @@ int HybridModel::decideAction(
     }
   }
 
+  // Record blueprint actor stats.
   if (testActing && testPartner_ && replayBuffer_ != nullptr) {
     for (auto& kv: bpPartnerReply) {
-      if (kv.first != "a" && kv.first != "all_q") continue;
+      // Only store stats for actions and q values
+      if (kv.first != "a" && kv.first != "all_q") {
+        continue;
+      }
       std::string newKey = "rl_" + kv.first;
       bpPartnerReply[newKey] = torch::zeros(kv.second.sizes());
     }
@@ -212,53 +203,136 @@ int HybridModel::decideAction(
     }
   }
 
+  // RL action will be used
   if (rlStep_ > 0) {
-    updateHid(rlReply, rlHid_);
-
-    action = rlReply.at("a").item<int64_t>();
-
-    if (env.state().CurPlayer() == index) {
-      --rlStep_;
-    }
-
-    if (testActing) {
-      int bpAction = bpReply.at("a").item<int64_t>();
-      auto bpMove = env.state().ParentGame()->GetMove(bpAction);
-      chosenMoves_["bp action"] = bpMove.ToString();
-    }
-
-    if (retAction != nullptr) {
-      *retAction = rlReply;
-    }
+    action = getRlAction(env, rlReply, bpReply, testActing, retAction);
+  // Blueprint action will be used
   } else {
     assert(futRl_.isNull());
-
-    if (testActing && testPartner_) {
-      action = bpPartnerReply.at("a").item<int64_t>();
-      auto move = env.state().ParentGame()->GetMove(action);
-      chosenMoves_["bp partner action"] = move.ToString();
-    } else {
-      action = bpReply.at("a").item<int64_t>();
-      auto move = env.state().ParentGame()->GetMove(action);
-      chosenMoves_["bp action"] = move.ToString();
-    }
-
-    // assert(retAction == nullptr);
-    // technically this is not right, we should never return action from bp
-    // for training purpose, but in this case it will be skip anyway.
-    if (retAction != nullptr) {
-      assert(action == env.game().MaxMoves());
-      *retAction = bpReply;
-    }
+    action = getBpAction(env, bpReply, bpPartnerReply, testActing, retAction);
   }
 
   if (env.state().CurPlayer() != index) {
+    if (action != env.game().MaxMoves()) {
+      printf("player: %d, action: %d\n", index, action);
+    }
     assert(action == env.game().MaxMoves());
   }
 
   return action;
 }
 
+rela::TensorDict HybridModel::getBpReply(const GameSimulator& env) {
+  char colourMap[5] = {'R', 'Y', 'G', 'W', 'B'};
+  rela::TensorDict bpReply;
+
+  if (bpIndex_ >= 0) {
+    bpReply = futBp_[bpIndex_][cpIndex_].get();
+    updateHid(bpReply, bpHid_[bpIndex_][cpIndex_]);
+    return bpReply;
+  }
+
+  for (int i = 0; i < (int)bpHid_.size(); i++) {
+    for (int j = 0; j < (int)colourPermute_.size(); j++) {
+      auto reply = futBp_[i][j].get();
+      updateHid(reply, bpHid_[i][j]);
+
+      // Print permutes, and model name
+      std::stringstream permute;
+      std::copy(colourPermute_[j].begin(), colourPermute_[j].end(), 
+      std::ostream_iterator<int>(permute, " "));
+      if(PR)printf("%3d [ %s], ", j, permute.str().c_str());
+      if(PR)std::cout << "after: " << 
+        bpHid_[i][j]["h0"].index({0,0,0}).item<float>() << ", ";
+      if(PR)bpModel_[i]->printModel();
+
+      // Print action, and model name
+      int action = reply.at("a").item<int64_t>();
+      auto move = env.state().ParentGame()->GetMove(action);
+      if (sba_ && move.MoveType() == hle::HanabiMove::Type::kRevealColor) {
+        char colourBefore = colourMap[move.Color()];
+        int realColor = inverseColourPermute_[j][move.Color()];
+        move.SetColor(realColor);
+        if(PR)printf("action colour %c->%c, %s\n", 
+            colourBefore, colourMap[move.Color()], move.ToString().c_str());
+      }
+    }
+  }
+
+  return rela::TensorDict();
+}
+
+int HybridModel::getRlAction(
+    const GameSimulator& env, 
+    rela::TensorDict rlReply, 
+    rela::TensorDict bpReply, 
+    bool testActing, 
+    rela::TensorDict* retAction) {
+  updateHid(rlReply, rlHid_);
+  int action = rlReply.at("a").item<int64_t>();
+
+  if (env.state().CurPlayer() == index) {
+    --rlStep_;
+  }
+
+  // Save bp action for logs
+  if (testActing) {
+    int bpAction = bpReply.at("a").item<int64_t>();
+    auto bpMove = env.state().ParentGame()->GetMove(bpAction);
+    chosenMoves_["bp action"] = bpMove.ToString();
+  }
+
+  if (retAction != nullptr) {
+    *retAction = rlReply;
+  }
+
+  return action;
+}
+
+int HybridModel::getBpAction(
+    const GameSimulator& env, 
+    rela::TensorDict bpReply, 
+    rela::TensorDict bpPartnerReply,
+    bool testActing, 
+    rela::TensorDict* retAction) {
+  int action = -1;
+
+  // Use the test partner blueprint action for the real game.
+  if (testActing && testPartner_) {
+    action = bpPartnerReply.at("a").item<int64_t>();
+    auto move = env.state().ParentGame()->GetMove(action);
+    chosenMoves_["bp partner action"] = move.ToString();
+
+  // Use the blueprint action when not test partner, or when in eval 
+  // or search mode.
+  } else {
+    action = bpReply.at("a").item<int64_t>();
+    auto move = env.state().ParentGame()->GetMove(action);
+
+    // un-shuffle colour action for test partner.
+    if (testPartner_ && sba_ && 
+        move.MoveType() == hle::HanabiMove::Type::kRevealColor) {
+      int realColor = inverseColourPermute_[cpIndex_][move.Color()];
+      move.SetColor(realColor);
+      action = env.game().GetMoveUid(move);
+    }
+
+    chosenMoves_["bp action"] = move.ToString();
+  }
+
+  // assert(retAction == nullptr);
+  // technically this is not right, we should never return action from bp
+  // for training purpose, but in this case it will be skip anyway.
+  if (retAction != nullptr) {
+    if (sba_) {
+      printf("returning action, actor 0 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+    }
+    assert(action == env.game().MaxMoves());
+    *retAction = bpReply;
+  }
+
+  return action;
+}
 
 void HybridModel::observeAfterAct(const GameSimulator& env, bool testActing) {
   if (testActing && replayBuffer_ != nullptr) {

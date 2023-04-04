@@ -68,6 +68,26 @@ inline rela::TensorDict observe(
     const hle::HanabiState& state, 
     int playerIdx, 
     bool hideAction, 
+    bool legacySad,
+    bool shuffleColor,
+    const std::vector<int>& colorPermute,
+    const std::vector<int>& invColorPermute) {
+  return observe(
+      state,
+      playerIdx,
+      shuffleColor,
+      colorPermute,
+      invColorPermute,
+      hideAction,
+      true,
+      legacySad,
+      legacySad);
+}
+
+inline rela::TensorDict observe(
+    const hle::HanabiState& state, 
+    int playerIdx, 
+    bool hideAction, 
     bool legacySad) {
   return observe(
       state,

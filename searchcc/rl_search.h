@@ -181,7 +181,7 @@ class RLSearchActor {
     callOrder_ = 0;
 
     prevModel_ = model_;  // this line can only be in decide action
-    return model_.decideAction(env, true, true);
+    return model_.decideAction(env, true);
   }
 
   // should be called after decideAction?

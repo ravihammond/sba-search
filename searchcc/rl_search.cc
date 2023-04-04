@@ -24,9 +24,6 @@ std::vector<std::shared_ptr<SearchThreadLoop>> RLSearchActor::startDataGeneratio
     std::vector<std::vector<std::vector<hle::HanabiCardValue>>> simHands,
     bool useSimHands,
     bool beliefMode) const {
-  printf("numThread: %d\n", numThread);
-  printf("numEnvPerThread: %d\n", numEnvPerThread);
-  printf("numGame: %d\n", numGame);
   assert(context_ == nullptr);
   assert(partner_ != nullptr);
   assert(!(train && beliefMode));
@@ -41,16 +38,13 @@ std::vector<std::shared_ptr<SearchThreadLoop>> RLSearchActor::startDataGeneratio
   int bpIndex = 0;
 
   for (int i = 0; i < numThread; ++i) {
-    printf("thread: %d\n", i);
     std::vector<std::vector<std::unique_ptr<SimulationActor>>> 
         actors(numEnvPerThread);
     for (int j = 0; j < numEnvPerThread; ++j) {
-      printf("env: %d\n", j);
       int seed = std::abs((int)rng());
 
       std::unique_ptr<SimulationActor> me;
 
-      printf("actor: self\n");
       if (train) {
         me = std::make_unique<SimulationActor>(
             model_, numRlStep, epsList, replay, nStep_, gamma_, seed, cpRng_);
@@ -62,7 +56,6 @@ std::vector<std::shared_ptr<SearchThreadLoop>> RLSearchActor::startDataGeneratio
 
       std::unique_ptr<SimulationActor> partner;
 
-      printf("actor: partner\n");
       if (jointSearch_) {
         if (train) {
           // we also need data from out partner's perspective
