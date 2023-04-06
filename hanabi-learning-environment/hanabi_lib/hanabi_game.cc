@@ -65,6 +65,7 @@ HanabiGame::HanabiGame(
   for (int uid = 0; uid < MaxMoves(); ++uid) {
     moves_.push_back(ConstructMove(uid));
   }
+  moves_.push_back(ConstructMove(MaxMoves() + 1));
   for (int uid = 0; uid < MaxChanceOutcomes(); ++uid) {
     chance_outcomes_.push_back(ConstructChanceOutcome(uid));
   }

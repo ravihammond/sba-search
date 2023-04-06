@@ -10,7 +10,7 @@
 #include <sstream>
 #include "searchcc/hybrid_model.h"
 
-#define PR true
+#define PR false
 
 namespace search {
 
@@ -135,9 +135,9 @@ rela::TensorDict HybridModel::observeBp(
   std::stringstream permute;
   std::copy(colourPermute_[cpIndex].begin(), colourPermute_[cpIndex].end(), 
             std::ostream_iterator<int>(permute, " "));
-  if(PR)printf("%3d [ %s], ", cpIndex, permute.str().c_str());
-  if(PR)std::cout << "before: " << 
-    bpHid_[bpIndex][cpIndex]["h0"].index({0,0,0}).item<float>() << ", ";
+  if (sba_) {
+    if(PR)printf("[ %s], ", permute.str().c_str());
+  }
   if(PR)bpModel_[bpIndex]->printModel();
   futBp_[bpIndex][cpIndex] = bpModel_[bpIndex]->call("act", input);
 
@@ -210,12 +210,10 @@ int HybridModel::decideAction(
   } else {
     assert(futRl_.isNull());
     action = getBpAction(env, bpReply, bpPartnerReply, testActing, retAction);
+    auto actionStr = env.game().GetMove(action).ToString();
   }
 
   if (env.state().CurPlayer() != index) {
-    if (action != env.game().MaxMoves()) {
-      printf("player: %d, action: %d\n", index, action);
-    }
     assert(action == env.game().MaxMoves());
   }
 
@@ -241,9 +239,9 @@ rela::TensorDict HybridModel::getBpReply(const GameSimulator& env) {
       std::stringstream permute;
       std::copy(colourPermute_[j].begin(), colourPermute_[j].end(), 
       std::ostream_iterator<int>(permute, " "));
-      if(PR)printf("%3d [ %s], ", j, permute.str().c_str());
-      if(PR)std::cout << "after: " << 
-        bpHid_[i][j]["h0"].index({0,0,0}).item<float>() << ", ";
+      if (sba_) {
+        if(PR)printf("[ %s], ", permute.str().c_str());
+      }
       if(PR)bpModel_[i]->printModel();
 
       // Print action, and model name

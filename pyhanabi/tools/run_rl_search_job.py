@@ -148,12 +148,14 @@ def run_job(job):
         "--num_epoch", "1",
         "--epoch_len", "5000",
         "--num_samples", "50000",
+        "--num_samples", "50000",
         "--skip_search", str(args.skip_search),
         "--ad_hoc", "1",
         "--upload_gcloud", str(args.upload_gcloud),
         "--gcloud_dir", args.gcloud_dir,
         "--save_game", "1",
         "--verbose", "1",
+        "--sba", str(args.sba),
     ]
 
     subprocess.run(command)
@@ -172,6 +174,7 @@ def parse_args():
     parser.add_argument("--skip_search", type=int, default=0)
     parser.add_argument("--upload_gcloud", type=int, default=1)
     parser.add_argument("--gcloud_dir", type=str, default="hanabi-search-games-br")
+    parser.add_argument("--sba", type=int, default=1)
     args = parser.parse_args()
     return args
 

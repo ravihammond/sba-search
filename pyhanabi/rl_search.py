@@ -72,18 +72,21 @@ def run_rl_search(args):
     rl_rollout_device = [None, args.rl_rollout_device]
 
     # SBA Colour permutations
-    sba = [args.sba, 0]
-    colour_permute = list(itertools.permutations([0,1,2,3,4]))
-    colour_permute = [list(x) for x in colour_permute]
-    inverse_colour_permute = []
-    for permute in colour_permute:
-        inv_permute = [0,1,2,3,4]
-        inv_permute = sorted(inv_permute, key=lambda x: permute[x])
-        for i in range(5):
-            assert(inv_permute[permute[i]] == i)
-        inverse_colour_permute.append(inv_permute)
-    colour_permute_all = [colour_permute, [colour_permute[0]]]
-    inverse_colour_permute_all = [inverse_colour_permute, [inverse_colour_permute[0]]]
+    colour_permute_all = [[], []]
+    inverse_colour_permute_all = [[], []]
+    if args.sba:
+        sba = [args.sba, 0]
+        colour_permute = list(itertools.permutations([0,1,2,3,4]))
+        colour_permute = [list(x) for x in colour_permute]
+        inverse_colour_permute = []
+        for permute in colour_permute:
+            inv_permute = [0,1,2,3,4]
+            inv_permute = sorted(inv_permute, key=lambda x: permute[x])
+            for i in range(5):
+                assert(inv_permute[permute[i]] == i)
+            inverse_colour_permute.append(inv_permute)
+        colour_permute_all = [colour_permute, [colour_permute[0]]]
+        inverse_colour_permute_all = [inverse_colour_permute, [inverse_colour_permute[0]]]
 
     search_wrapper = []
     for i in range(2):
@@ -296,7 +299,6 @@ def train(game, search_actor, replay_buffer, args, eval_seed):
             return None, None
 
     max_possible_score = game.state().max_possible_score()
-    print("\nRUN SIM GAMES START #################################\n")
     bp_scores = search_actor.actor.run_sim_games(
         game, 
         args.num_eval_game, 
@@ -305,19 +307,15 @@ def train(game, search_actor, replay_buffer, args, eval_seed):
         sim_hands, 
         use_sim_hands
     )
-    print("\nRUN SIM GAMES END #################################\n")
     assert np.mean(bp_scores) <= max_possible_score + 1e-5
     if max_possible_score - np.mean(bp_scores) < args.threshold:
         return np.mean(bp_scores), 0
 
-    print("\nSTART DATA GENERATION #################################\n")
     search_actor.actor.start_data_generation(
         game, replay_buffer, args.num_rl_step, sim_hands, use_sim_hands, False
     )
 
     while replay_buffer.size() < args.burn_in_frames:
-        if replay_buffer.size() == 4:
-            sys.exit()
         print("warming up replay buffer:", replay_buffer.size())
         time.sleep(1)
 
@@ -435,7 +433,7 @@ def save_and_upload(args, data, score, now):
     if not args.upload_gcloud:
         return
 
-    hanabi_dir = "hanabi-search-games"
+    hanabi_dir = "hanabi-search-games-sba"
     game_path_obj = pathlib.Path(game_path)
     gc_game_path = os.path.join(args.gcloud_dir, *game_path_obj.parts[1:])
     score_path_obj = pathlib.Path(score_path)

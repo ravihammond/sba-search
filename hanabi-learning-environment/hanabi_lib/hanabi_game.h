@@ -44,7 +44,9 @@ class HanabiGame {
   // Number of different player moves.
   int MaxMoves() const;
   // Get a HanabiMove by unique id.
-  HanabiMove GetMove(int uid) const { return moves_[uid]; }
+  HanabiMove GetMove(int uid) const { 
+    return moves_.at(uid);  
+  }
   // Get unique id for a move. Returns -1 for invalid move.
   int GetMoveUid(HanabiMove move) const;
   int GetMoveUid(HanabiMove::Type move_type, int card_index, int target_offset,
@@ -109,6 +111,10 @@ class HanabiGame {
     int color = index / num_ranks_;
     int rank = index % num_ranks_;
     return HanabiCardValue(color, rank);
+  }
+
+  std::vector<HanabiMove> getAllPossibleMoves() const{
+    return moves_;
   }
 
  private:

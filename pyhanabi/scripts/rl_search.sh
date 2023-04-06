@@ -60,7 +60,7 @@ python rl_search.py \
     --epoch_len 5000 \
     --num_samples 50000 \
     --num_eval_game 5000 \
-    --skip_search 1 \
+    --skip_search 0 \
     --ad_hoc 1 \
     --upload_gcloud 0 \
     --save_game 0 \
