@@ -6,6 +6,9 @@
 //
 #pragma once
 
+#include <stdio.h>
+#include <iostream>
+
 #include "searchcc/game_sim.h"
 #include "searchcc/hand_dist.h"
 #include "searchcc/hybrid_model.h"
@@ -22,11 +25,23 @@ class SpartaActor {
       std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer)
       : index(index)
       , rng_(seed)
-      , prevModel_(index, legacySad, replayBuffer)
-      , model_(index, legacySad, replayBuffer) 
+      , prevModel_(index, std::vector<bool>(1,false), false, replayBuffer, 
+          false, 0, false, std::vector<std::vector<int>>(), 
+          std::vector<std::vector<int>>())
+      , model_(index, std::vector<bool>(1,false), false, replayBuffer, 
+          false, 0, false, std::vector<std::vector<int>>(1, std::vector<int>()), 
+          std::vector<std::vector<int>>(1, std::vector<int>()))
       , legacySad_(legacySad) {
     assert(bpRunner != nullptr);
-    model_.setBpModel(bpRunner, getH0(*bpRunner, 1));
+
+    std::vector<std::shared_ptr<rela::BatchRunner>> bpRunners;
+    bpRunners.push_back(bpRunner);
+    std::vector<std::vector<rela::TensorDict>> bpRunnersH0;
+    std::vector<rela::TensorDict> h0;
+    h0.push_back(getH0(*bpRunner, 1));
+    bpRunnersH0.push_back(h0);
+
+    model_.setBpModel(bpRunners, bpRunnersH0);
   }
 
   void setPartners(std::vector<std::shared_ptr<SpartaActor>> partners) {
@@ -56,7 +71,8 @@ class SpartaActor {
         partners_[prevPlayer]->prevModel_,
         index,
         handDist_,
-        numThread);
+        numThread,
+        false);
   }
 
   void observe(const GameSimulator& env) {

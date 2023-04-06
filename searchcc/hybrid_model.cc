@@ -10,7 +10,7 @@
 #include <sstream>
 #include "searchcc/hybrid_model.h"
 
-#define PR false
+#define PR true
 
 namespace search {
 
@@ -117,8 +117,8 @@ rela::TensorDict HybridModel::observeBp(
     int bpIndex, 
     int cpIndex, 
     rela::TensorDict* retFeat) {
-  auto feat = observe(env.state(), index, hideAction, legacySad_[bpIndex],
-      sba_, colourPermute_[cpIndex], inverseColourPermute_[cpIndex]);
+  auto feat = observe(env.state(), index, hideAction, legacySad_.at(bpIndex),
+      sba_, colourPermute_.at(cpIndex), inverseColourPermute_.at(cpIndex));
 
   if (retFeat != nullptr) {
     *retFeat = feat;
@@ -131,15 +131,15 @@ rela::TensorDict HybridModel::observeBp(
     r2d2Buffer_->pushObs(input);
   }
 
-  addHid(input, bpHid_[bpIndex][cpIndex]);
+  addHid(input, bpHid_.at(bpIndex).at(cpIndex));
   std::stringstream permute;
-  std::copy(colourPermute_[cpIndex].begin(), colourPermute_[cpIndex].end(), 
+  std::copy(colourPermute_.at(cpIndex).begin(), colourPermute_.at(cpIndex).end(), 
             std::ostream_iterator<int>(permute, " "));
   if (sba_) {
     if(PR)printf("[ %s], ", permute.str().c_str());
   }
-  if(PR)bpModel_[bpIndex]->printModel();
-  futBp_[bpIndex][cpIndex] = bpModel_[bpIndex]->call("act", input);
+  if(PR)bpModel_.at(bpIndex)->printModel();
+  futBp_.at(bpIndex).at(cpIndex) = bpModel_.at(bpIndex)->call("act", input);
 
   return feat;
 }
@@ -174,7 +174,7 @@ int HybridModel::decideAction(
             continue;
           }
           std::string newKey = "rl_" + kv.first;
-          bpReply[newKey] = kv.second;
+          bpReply.at(newKey) = kv.second;
         }
         bpReply["rl_actor"] = torch::tensor(1);
       }
@@ -189,7 +189,7 @@ int HybridModel::decideAction(
         continue;
       }
       std::string newKey = "rl_" + kv.first;
-      bpPartnerReply[newKey] = torch::zeros(kv.second.sizes());
+      bpPartnerReply.at(newKey) = torch::zeros(kv.second.sizes());
     }
     bpPartnerReply["rl_actor"] = torch::tensor(0);
   }
@@ -225,31 +225,31 @@ rela::TensorDict HybridModel::getBpReply(const GameSimulator& env) {
   rela::TensorDict bpReply;
 
   if (bpIndex_ >= 0) {
-    bpReply = futBp_[bpIndex_][cpIndex_].get();
-    updateHid(bpReply, bpHid_[bpIndex_][cpIndex_]);
+    bpReply = futBp_.at(bpIndex_).at(cpIndex_).get();
+    updateHid(bpReply, bpHid_.at(bpIndex_).at(cpIndex_));
     return bpReply;
   }
 
   for (int i = 0; i < (int)bpHid_.size(); i++) {
     for (int j = 0; j < (int)colourPermute_.size(); j++) {
-      auto reply = futBp_[i][j].get();
-      updateHid(reply, bpHid_[i][j]);
+      auto reply = futBp_.at(i).at(j).get();
+      updateHid(reply, bpHid_.at(i).at(j));
 
       // Print permutes, and model name
       std::stringstream permute;
-      std::copy(colourPermute_[j].begin(), colourPermute_[j].end(), 
+      std::copy(colourPermute_.at(j).begin(), colourPermute_.at(j).end(), 
       std::ostream_iterator<int>(permute, " "));
       if (sba_) {
         if(PR)printf("[ %s], ", permute.str().c_str());
       }
-      if(PR)bpModel_[i]->printModel();
+      if(PR)bpModel_.at(i)->printModel();
 
       // Print action, and model name
       int action = reply.at("a").item<int64_t>();
       auto move = env.state().ParentGame()->GetMove(action);
       if (sba_ && move.MoveType() == hle::HanabiMove::Type::kRevealColor) {
         char colourBefore = colourMap[move.Color()];
-        int realColor = inverseColourPermute_[j][move.Color()];
+        int realColor = inverseColourPermute_.at(j).at(move.Color());
         move.SetColor(realColor);
         if(PR)printf("action colour %c->%c, %s\n", 
             colourBefore, colourMap[move.Color()], move.ToString().c_str());

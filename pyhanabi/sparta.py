@@ -21,6 +21,43 @@ import utils
 import common_utils
 
 
+def run_search(args):
+    torch.backends.cudnn.deterministic = True
+    logger_path = os.path.join(args.save_dir, "train.log")
+    sys.stdout = common_utils.Logger(logger_path)
+
+    if "fc_v.weight" in torch.load(args.weight).keys():
+        bp, config = utils.load_agent(args.weight, {"device": args.device})
+        assert not config["hide_action"]
+        assert not config["boltzmann_act"]
+    else:
+        bp = utils.load_supervised_agent(args.weight, args.device)
+    bp.train(False)
+
+    bp_runner = rela.BatchRunner(bp, args.device, 2000, ["act"])
+    bp_runner.start()
+
+    seed = args.seed
+    actors = []
+    for i in range(args.num_player):
+        print("before")
+        actor = hanalearn.SpartaActor(i, bp_runner, seed, False, None)
+        print("after")
+        seed += 1
+        actors.append(actor)
+
+    actors[args.search_player].set_partners(actors)
+
+    moves, score = run(
+        args.game_seed,
+        actors,
+        args.search_player,
+        args.num_search,
+        args.threshold,
+        args.num_thread,
+    )
+
+
 def run(seed, actors, search_actor_idx, num_search, threshold, num_thread):
     params = {
         "players": str(len(actors)),
@@ -33,17 +70,18 @@ def run(seed, actors, search_actor_idx, num_search, threshold, num_thread):
     step = 0
     moves = []
     while not game.terminal():
-        print("================STEP %d================" % step)
+        print("\n================STEP %d================\n" % step)
         print(game.state().to_string())
 
         cur_player = game.state().cur_player()
 
         actors[search_actor_idx].update_belief(game, num_thread)
         for i, actor in enumerate(actors):
+            print(f"\n---Actor {i} observe---")
             actor.observe(game)
 
         for i, actor in enumerate(actors):
-            print(f"---Actor {i} decide action---")
+            print(f"\n---Actor {i} decide action---")
             action = actor.decide_action(game)
             if i == cur_player:
                 move = game.get_move(action)
@@ -71,7 +109,7 @@ def parse_args():
     parser.add_argument("--threshold", type=float, default=0.05)
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--num_thread", type=int, default=10)
-    parser.add_argument("--weight_file", type=str, default=None)
+    parser.add_argument("--weight", type=str, default=None)
     parser.add_argument("--num_player", type=int, default=2)
     parser.add_argument("--search_player", type=int, default=1)
     parser.add_argument("--seed", type=int, default=200191)
@@ -82,37 +120,6 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    torch.backends.cudnn.deterministic = True
     args = parse_args()
+    run_search(args)
 
-    logger_path = os.path.join(args.save_dir, "train.log")
-    sys.stdout = common_utils.Logger(logger_path)
-
-    if "fc_v.weight" in torch.load(args.weight_file).keys():
-        bp, config = utils.load_agent(args.weight_file, {"device": args.device})
-        assert not config["hide_action"]
-        assert not config["boltzmann_act"]
-    else:
-        bp = utils.load_supervised_agent(args.weight_file, args.device)
-    bp.train(False)
-
-    bp_runner = rela.BatchRunner(bp, args.device, 2000, ["act"])
-    bp_runner.start()
-
-    seed = args.seed
-    actors = []
-    for i in range(args.num_player):
-        actor = hanalearn.SpartaActor(i, bp_runner, seed)
-        seed += 1
-        actors.append(actor)
-
-    actors[args.search_player].set_partners(actors)
-
-    moves, score = run(
-        args.game_seed,
-        actors,
-        args.search_player,
-        args.num_search,
-        args.threshold,
-        args.num_thread,
-    )

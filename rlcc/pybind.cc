@@ -16,7 +16,7 @@
 #include "rlcc/clone_data_generator.h"
 #include "rlcc/hanabi_env.h"
 #include "rlcc/thread_loop.h"
-//#include "searchcc/sparta.h"
+#include "searchcc/sparta.h"
 #include "searchcc/rl_search.h"
 //#include "searchcc/finesse.h"
 
@@ -134,19 +134,19 @@ PYBIND11_MODULE(hanalearn, m) {
       .def("terminal", &search::GameSimulator::terminal)
       .def("get_score", &search::GameSimulator::score);
 
-  //py::class_<search::SpartaActor, std::shared_ptr<search::SpartaActor>>(
-      //m, "SpartaActor")
-      //.def(py::init<
-          //int, 
-          //std::shared_ptr<rela::BatchRunner>, 
-          //int,
-          //bool,
-          //std::shared_ptr<rela::RNNPrioritizedReplay>>())
-      //.def("set_partners", &search::SpartaActor::setPartners)
-      //.def("update_belief", &search::SpartaActor::updateBelief)
-      //.def("observe", &search::SpartaActor::observe)
-      //.def("decide_action",  &search::SpartaActor::decideAction)
-      //.def("sparta_search",  &search::SpartaActor::spartaSearch);
+  py::class_<search::SpartaActor, std::shared_ptr<search::SpartaActor>>(
+      m, "SpartaActor")
+      .def(py::init<
+          int,  //
+          std::shared_ptr<rela::BatchRunner>, 
+          int,
+          bool,
+          std::shared_ptr<rela::RNNPrioritizedReplay>>())
+      .def("set_partners", &search::SpartaActor::setPartners)
+      .def("update_belief", &search::SpartaActor::updateBelief)
+      .def("observe", &search::SpartaActor::observe)
+      .def("decide_action",  &search::SpartaActor::decideAction)
+      .def("sparta_search",  &search::SpartaActor::spartaSearch);
 
   py::class_<search::RLSearchActor, std::shared_ptr<search::RLSearchActor>>(
       m, "RLSearchActor")

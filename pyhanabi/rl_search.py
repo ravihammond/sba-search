@@ -433,7 +433,6 @@ def save_and_upload(args, data, score, now):
     if not args.upload_gcloud:
         return
 
-    hanabi_dir = "hanabi-search-games-sba"
     game_path_obj = pathlib.Path(game_path)
     gc_game_path = os.path.join(args.gcloud_dir, *game_path_obj.parts[1:])
     score_path_obj = pathlib.Path(score_path)

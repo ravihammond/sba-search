@@ -173,7 +173,7 @@ def parse_args():
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--skip_search", type=int, default=0)
     parser.add_argument("--upload_gcloud", type=int, default=1)
-    parser.add_argument("--gcloud_dir", type=str, default="hanabi-search-games-br")
+    parser.add_argument("--gcloud_dir", type=str, default="hanabi-search-games-sba")
     parser.add_argument("--sba", type=int, default=1)
     args = parser.parse_args()
     return args

@@ -60,7 +60,7 @@ pybind11_add_module(
   ${CMAKE_CURRENT_SOURCE_DIR}/searchcc/hybrid_model.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/searchcc/rl_search.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/searchcc/sim_actor.cc
-  #${CMAKE_CURRENT_SOURCE_DIR}/searchcc/sparta.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/searchcc/sparta.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/searchcc/thread_loop.cc
   #${CMAKE_CURRENT_SOURCE_DIR}/searchcc/finesse.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/pybind.cc
