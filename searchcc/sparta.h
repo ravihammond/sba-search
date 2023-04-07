@@ -36,6 +36,7 @@ class SpartaActor {
 
     std::vector<std::shared_ptr<rela::BatchRunner>> bpRunners;
     bpRunners.push_back(bpRunner);
+
     std::vector<std::vector<rela::TensorDict>> bpRunnersH0;
     std::vector<rela::TensorDict> h0;
     h0.push_back(getH0(*bpRunner, 1));

@@ -7,8 +7,7 @@
 #pragma once
 
 #include <stdio.h>
-#include <iostream>
-
+#include <iostream> 
 #include "rela/tensor_dict.h"
 #include "searchcc/game_sim.h"
 #include "rela/prioritized_replay.h"
@@ -61,7 +60,7 @@ class HybridModel {
             legacySadTestPartner ? 1 : 3, 80, 0.999);
     } else {
       r2d2Buffer_ = std::make_shared<rela::R2D2Buffer>(
-            legacySad[0] ? 1 : 3, 80, 0.999);
+            legacySad.at(0) ? 1 : 3, 80, 0.999);
     }
   }
 
@@ -82,16 +81,25 @@ class HybridModel {
       , colourPermute_(m.colourPermute_) 
       , inverseColourPermute_(m.inverseColourPermute_) 
       , cpIndex_(0) {
-    bpModel_ = std::vector<std::shared_ptr<rela::BatchRunner>>(
-               1, m.bpModel_.at(bpIndex));
+    if (m.bpModel_.size() > 0) {
+      bpModel_ = std::vector<std::shared_ptr<rela::BatchRunner>>(
+                 1, m.bpModel_.at(bpIndex));
+    }
 
-    bpHid_ = std::vector<std::vector<rela::TensorDict>>(1, 
-        m.bpHid_[bpIndex]);
+    if (m.bpHid_.size() > 0){
+      bpHid_ = std::vector<std::vector<rela::TensorDict>>(1, 
+          m.bpHid_.at(bpIndex));
+    }
     
-    colourPermute_ = std::vector<std::vector<int>>(1, m.colourPermute_[cpIndex]);
+    if (m.colourPermute_.size() > 0){
+      colourPermute_ = std::vector<std::vector<int>>(1, 
+          m.colourPermute_.at(cpIndex));
+    }
 
-    inverseColourPermute_ = std::vector<std::vector<int>>(1, 
-        m.inverseColourPermute_[cpIndex]);
+    if (m.inverseColourPermute_.size() > 0){
+      inverseColourPermute_ = std::vector<std::vector<int>>(1, 
+          m.inverseColourPermute_.at(cpIndex));
+    }
 
     futBp_ = std::vector<std::vector<rela::Future>>(bpModel_.size(), 
         std::vector<rela::Future>(colourPermute_.size()));
@@ -223,7 +231,7 @@ class HybridModel {
     return chosenMoves_;
   }
 
-  int getNumBpModels() {
+  int getNumBpModels() const {
     return (int)bpModel_.size();
   }
 
@@ -247,6 +255,10 @@ class HybridModel {
     return colourPermute_;
   }
 
+  int getNumColourPermute() {
+    return (int)colourPermute_.size();
+  }
+
   const std::vector<std::vector<int>>& getInverseColourPermute() const {
     return inverseColourPermute_;
   }
@@ -257,6 +269,10 @@ class HybridModel {
 
   void setInverseColourPermute(const std::vector<std::vector<int>>& inverseColourPermute) {
     inverseColourPermute_ = inverseColourPermute;
+  }
+
+  std::vector<std::shared_ptr<rela::BatchRunner>> getBpModel() {
+    return bpModel_;
   }
 
   const bool hideAction = false;
@@ -276,9 +292,15 @@ class HybridModel {
       rela::TensorDict* retAction);
 
   std::vector<std::shared_ptr<rela::BatchRunner>> bpModel_;
+    //std::vector<std::shared_ptr<rela::BatchRunner>>(1, 
+        //std::shared_ptr<rela::BatchRunner>());
   std::vector<std::vector<rela::TensorDict>> bpHid_;
+    //std::vector<std::vector<rela::TensorDict>>(1, 
+        //std::vector<rela::TensorDict>(1, rela::TensorDict()));
   rela::TensorDict belief_h0_;
   std::vector<std::vector<rela::Future>> futBp_;
+    //std::vector<std::vector<rela::Future>>(1, 
+        //std::vector<rela::Future>(1, rela::Future()));
 
   std::shared_ptr<rela::BatchRunner> bpPartnerModel_;
   rela::TensorDict bpPartnerHid_;
@@ -300,7 +322,9 @@ class HybridModel {
   int bpIndex_;
   bool sba_;
   std::vector<std::vector<int>> colourPermute_;
+    //std::vector<std::vector<int>>(1, std::vector<int>());
   std::vector<std::vector<int>> inverseColourPermute_;
+    //std::vector<std::vector<int>>(1, std::vector<int>());
   int cpIndex_;
 };
 }  // namespace search

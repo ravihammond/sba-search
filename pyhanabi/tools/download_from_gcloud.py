@@ -11,7 +11,7 @@ import pathlib
 from google.cloud import storage
 
 PROJECT = "aiml-reid-research"
-GCLOUD_PATH = "Ravi/hanabi-search-games-br/"
+GCLOUD_PATH = "Ravi/hanabi-search-games-sba/"
 SPLIT_NAME = { "six": "6-7-splits", "one": "1-12-splits" }
 
 
@@ -141,8 +141,8 @@ def download_bloblist(args, client, bucket, blobs):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out", type=str, default="game_data_downloaded")
-    parser.add_argument("--model", type=str, default="br,sba")
+    parser.add_argument("--out", type=str, default="game_data_downloaded_sba")
+    parser.add_argument("--model", type=str, default="sba")
     parser.add_argument("--split_index", type=str, default="0")
     parser.add_argument("--split_type", type=str, default="six")
     parser.add_argument("--data_type", type=str, default="test")

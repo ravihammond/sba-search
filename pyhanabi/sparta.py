@@ -40,9 +40,7 @@ def run_search(args):
     seed = args.seed
     actors = []
     for i in range(args.num_player):
-        print("before")
         actor = hanalearn.SpartaActor(i, bp_runner, seed, False, None)
-        print("after")
         seed += 1
         actors.append(actor)
 

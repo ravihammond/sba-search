@@ -142,9 +142,9 @@ def load_json_list(convention_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out", type=str, default="game_data_combined")
-    parser.add_argument("--source", type=str, default="game_data_downloaded")
-    parser.add_argument("--model", type=str, default="br")
+    parser.add_argument("--out", type=str, default="game_data_combined_sba")
+    parser.add_argument("--source", type=str, default="game_data_downloaded_sba")
+    parser.add_argument("--model", type=str, default="sba")
     parser.add_argument("--split_index", type=str, default="0")
     parser.add_argument("--split_type", type=str, default="six")
     parser.add_argument("--data_type", type=str, default="test")
