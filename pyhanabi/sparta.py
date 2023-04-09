@@ -26,16 +26,19 @@ def run_search(args):
     logger_path = os.path.join(args.save_dir, "train.log")
     sys.stdout = common_utils.Logger(logger_path)
 
-    bp, config = load_model(args.weight, args.sad_legacy, args.device)
-    bp.train(False)
-
-    bp_runner = rela.BatchRunner(bp, args.device, 2000, ["act"])
-    bp_runner.start()
+    weights = [args.test_partner_weight, args.weight]
+    sad_legacy = [args.test_partner_sad_legacy, args.sad_legacy]
 
     seed = args.seed
     actors = []
+
     for i in range(args.num_player):
-        actor = hanalearn.SpartaActor(i, bp_runner, seed, [args.sad_legacy], None)
+        bp, config = load_model(weights[i], sad_legacy[i], args.device)
+        bp.train(False)
+        bp_runner = rela.BatchRunner(bp, args.device, 2000, ["act"])
+        bp_runner.start()
+
+        actor = hanalearn.SpartaActor(i, bp_runner, seed, [sad_legacy[i]], None)
         seed += 1
         actors.append(actor)
 
@@ -96,7 +99,10 @@ def run(seed, actors, search_actor_idx, num_search, threshold, num_thread):
 
         cur_player = game.state().cur_player()
 
-        actors[search_actor_idx].update_belief(game, num_thread)
+        if not args.skip_search:
+            print(f"\n---Actor {search_actor_idx} update belief---")
+            actors[search_actor_idx].update_belief(game, num_thread)
+
         for i, actor in enumerate(actors):
             print(f"\n---Actor {i} observe---")
             actor.observe(game)
@@ -108,7 +114,7 @@ def run(seed, actors, search_actor_idx, num_search, threshold, num_thread):
                 move = game.get_move(action)
 
         # run sparta, this may change the move
-        if cur_player == search_actor_idx:
+        if not args.skip_search and cur_player == search_actor_idx:
             print(f"\n---Actor {cur_player} sparta search---")
             move = actors[search_actor_idx].sparta_search(
                 game, move, num_search, threshold
@@ -138,6 +144,9 @@ def parse_args():
     parser.add_argument("--learned_belief", type=int, default=0)
     parser.add_argument("--weight", type=str, default=None)
     parser.add_argument("--sad_legacy", type=int, default=0)
+    parser.add_argument("--test_partner_weight", type=str, default=None)
+    parser.add_argument("--test_partner_sad_legacy", type=int, default=0)
+    parser.add_argument("--skip_search", type=int, default=0)
 
     args = parser.parse_args()
     return args
