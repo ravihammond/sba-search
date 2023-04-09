@@ -118,7 +118,7 @@ class RLSearchActor {
 
     auto [obs, lastMove, cardCount, myHand] =
         observeForSearch(env.state(), index, 
-            hideAction, publBelief_, legacySad_[0]);
+            hideAction, publBelief_, legacySad_.at(0));
 
     search::updateBelief(
         prevState_,

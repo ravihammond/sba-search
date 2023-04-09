@@ -86,6 +86,7 @@ float searchMove(
 hle::HanabiMove SpartaActor::spartaSearch(
     const GameSimulator& env, hle::HanabiMove bpMove, int numSearch, float threshold) {
   torch::NoGradGuard ng;
+  printf("spartaSearch() sparta.cc ======\n");
 
   const auto& state = env.state();
   assert(state.CurPlayer() == index);

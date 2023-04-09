@@ -26,12 +26,7 @@ def run_search(args):
     logger_path = os.path.join(args.save_dir, "train.log")
     sys.stdout = common_utils.Logger(logger_path)
 
-    if "fc_v.weight" in torch.load(args.weight).keys():
-        bp, config = utils.load_agent(args.weight, {"device": args.device})
-        assert not config["hide_action"]
-        assert not config["boltzmann_act"]
-    else:
-        bp = utils.load_supervised_agent(args.weight, args.device)
+    bp, config = load_model(args.weight, args.sad_legacy, args.device)
     bp.train(False)
 
     bp_runner = rela.BatchRunner(bp, args.device, 2000, ["act"])
@@ -40,7 +35,7 @@ def run_search(args):
     seed = args.seed
     actors = []
     for i in range(args.num_player):
-        actor = hanalearn.SpartaActor(i, bp_runner, seed, False, None)
+        actor = hanalearn.SpartaActor(i, bp_runner, seed, [args.sad_legacy], None)
         seed += 1
         actors.append(actor)
 
@@ -54,6 +49,34 @@ def run_search(args):
         args.threshold,
         args.num_thread,
     )
+
+
+def load_model(weight, sad_legacy, device):
+    if sad_legacy:
+        model = utils.load_sad_model(
+                weight, 
+                device,
+                multi_step=1)
+        config = {
+            "sad": True,
+            "hide_action": False,
+            "weight": weight,
+            "parameterized": False,
+            "sad_legacy": True,
+            "multi_step": 1,
+            "boltzmann_act": False,
+            "method": "iql",
+        }
+    else:
+        if "fc_v.weight" in torch.load(weight).keys():
+            model, config = utils.load_agent(weight, {"device": device})
+            assert not config["hide_action"]
+            assert not config["boltzmann_act"]
+        else:
+            model = utils.load_supervised_agent(weight, device)
+            config = {}
+
+    return model, config
 
 
 def run(seed, actors, search_actor_idx, num_search, threshold, num_thread):
@@ -86,11 +109,12 @@ def run(seed, actors, search_actor_idx, num_search, threshold, num_thread):
 
         # run sparta, this may change the move
         if cur_player == search_actor_idx:
+            print(f"\n---Actor {cur_player} sparta search---")
             move = actors[search_actor_idx].sparta_search(
                 game, move, num_search, threshold
             )
 
-        print(f"Acitve Player {cur_player} pick action: {move.to_string()}")
+        print(f"Active Player {cur_player} pick action: {move.to_string()}")
         moves.append(move)
         game.step(move)
         step += 1
@@ -107,11 +131,13 @@ def parse_args():
     parser.add_argument("--threshold", type=float, default=0.05)
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--num_thread", type=int, default=10)
-    parser.add_argument("--weight", type=str, default=None)
     parser.add_argument("--num_player", type=int, default=2)
     parser.add_argument("--search_player", type=int, default=1)
     parser.add_argument("--seed", type=int, default=200191)
     parser.add_argument("--game_seed", type=int, default=19)
+    parser.add_argument("--learned_belief", type=int, default=0)
+    parser.add_argument("--weight", type=str, default=None)
+    parser.add_argument("--sad_legacy", type=int, default=0)
 
     args = parser.parse_args()
     return args

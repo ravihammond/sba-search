@@ -21,15 +21,14 @@ class SpartaActor {
       int index, 
       std::shared_ptr<rela::BatchRunner> bpRunner, 
       int seed,
-      bool legacySad,
+      std::vector<bool> legacySad,
       std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer)
       : index(index)
       , rng_(seed)
-      , prevModel_(index, std::vector<bool>(1,false), false, replayBuffer, 
-          false, 0, false, std::vector<std::vector<int>>(), 
-          std::vector<std::vector<int>>())
-      , model_(index, std::vector<bool>(1,false), false, replayBuffer, 
-          false, 0, false, std::vector<std::vector<int>>(1, std::vector<int>()), 
+      , prevModel_(index, legacySad, false, replayBuffer, false, 0, false, 
+          std::vector<std::vector<int>>(), std::vector<std::vector<int>>())
+      , model_(index, legacySad, false, replayBuffer, false, 0, false, 
+          std::vector<std::vector<int>>(1, std::vector<int>()), 
           std::vector<std::vector<int>>(1, std::vector<int>()))
       , legacySad_(legacySad) {
     assert(bpRunner != nullptr);
@@ -61,7 +60,7 @@ class SpartaActor {
     std::cout << "prev player: " << prevPlayer << std::endl;
 
     auto [obs, lastMove, cardCount, myHand] =
-        observeForSearch(env.state(), index, hideAction, false, legacySad_);
+        observeForSearch(env.state(), index, hideAction, false, legacySad_.at(0));
 
     search::updateBelief(
         prevState_,
@@ -117,7 +116,7 @@ class SpartaActor {
 
   int callOrder_ = 0;
 
-  bool legacySad_;
+  std::vector<bool> legacySad_;
 };
 
 }  // namespace search

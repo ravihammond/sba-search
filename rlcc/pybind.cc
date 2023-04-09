@@ -137,11 +137,11 @@ PYBIND11_MODULE(hanalearn, m) {
   py::class_<search::SpartaActor, std::shared_ptr<search::SpartaActor>>(
       m, "SpartaActor")
       .def(py::init<
-          int,  //
-          std::shared_ptr<rela::BatchRunner>, 
-          int,
-          bool,
-          std::shared_ptr<rela::RNNPrioritizedReplay>>())
+          int,  // index
+          std::shared_ptr<rela::BatchRunner>, // bpRunner
+          int, // seed
+          std::vector<bool>, // legacySad
+          std::shared_ptr<rela::RNNPrioritizedReplay>>()) // replayBuffer
       .def("set_partners", &search::SpartaActor::setPartners)
       .def("update_belief", &search::SpartaActor::updateBelief)
       .def("observe", &search::SpartaActor::observe)
