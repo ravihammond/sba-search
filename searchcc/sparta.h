@@ -48,7 +48,7 @@ class SpartaActor {
     partners_ = std::move(partners);
   }
 
-  void updateBelief(const GameSimulator& env, int numThread) {
+  void updateBelief(const GameSimulator& env, int numThread, bool skipCounterfactual) {
     assert(callOrder_ == 0);
     ++callOrder_;
 
@@ -72,7 +72,7 @@ class SpartaActor {
         index,
         handDist_,
         numThread,
-        false);
+        skipCounterfactual);
   }
 
   void observe(const GameSimulator& env) {

@@ -9,6 +9,8 @@
 
 #include "searchcc/sparta.h"
 
+#define SIM false
+
 namespace search {
 
 float searchMove(
@@ -17,16 +19,22 @@ float searchMove(
     const std::vector<std::vector<hle::HanabiCardValue>>& hands,
     const std::vector<int> seeds,
     int myIdx,
-    const std::vector<HybridModel>& players) {
+    const std::vector<HybridModel>& players,
+    bool skipSearch) {
+  if (skipSearch) return 0;
+  //printf("searchMove() sparta.cc ======\n");
   std::vector<std::vector<HybridModel>> allPlayers(hands.size(), players);
   std::vector<GameSimulator> games;
   games.reserve(hands.size());
+  //printf("num games before: %d\n", (int)games.size());
   for (size_t i = 0; i < hands.size(); ++i) {
     std::vector<SimHand> simHands{
         SimHand(myIdx, hands[i]),
     };
     games.emplace_back(state, simHands, seeds[i]);
   }
+
+  //printf("num games after: %d\n", (int)games.size());
 
   size_t terminated = 0;
   std::vector<int> notTerminated;
@@ -40,7 +48,12 @@ float searchMove(
     }
   }
 
+  int game_turn = 0;
   while (!notTerminated.empty()) {
+    if(SIM)printf("\n=======================================\n");
+    if(SIM)printf("Game Turn: %d\n", game_turn);
+    if(SIM)printf("\n%s\n", games[0].state().ToString().c_str());
+
     std::vector<int> newNotTerminated;
     for (auto i : notTerminated) {
       assert(!games[i].state().IsTerminal());
@@ -68,6 +81,7 @@ float searchMove(
     }
 
     notTerminated = newNotTerminated;
+    game_turn++;
   }
   assert(terminated == games.size());
 
@@ -91,6 +105,8 @@ hle::HanabiMove SpartaActor::spartaSearch(
   const auto& state = env.state();
   assert(state.CurPlayer() == index);
   auto legalMoves = state.LegalMoves(index);
+  printf("num legal moves: %d\n", (int)legalMoves.size());
+  printf("num search: %d\n", numSearch);
 
   if (legalMoves.empty()) {
     return bpMove;
@@ -100,6 +116,8 @@ hle::HanabiMove SpartaActor::spartaSearch(
   std::cout << "SPARTA will run " << numSearchPerMove << " searches on "
             << legalMoves.size() << " legal moves" << std::endl;
   auto simHands = handDist_.sampleHands(numSearchPerMove, &rng_);
+  printf("num sim hands: %d\n", (int)simHands.size());
+
   std::vector<int> seeds;
   for (size_t i = 0; i < simHands.size(); ++i) {
     seeds.push_back(int(rng_()));
@@ -110,9 +128,18 @@ hle::HanabiMove SpartaActor::spartaSearch(
   for (auto& p : partners_) {
     players.push_back(p->model_);
   }
-  for (auto move : legalMoves) {
-    futMoveScores.push_back(std::async(
-        std::launch::async, searchMove, state, move, simHands, seeds, index, players));
+  for (int i = 0; i < (int)legalMoves.size(); i++) {
+    auto move = legalMoves.at(i);
+    bool skipSearch = false;
+    //if (i == 0) skipSearch = false;
+    futMoveScores.push_back(std::async(std::launch::async, searchMove, 
+        state, 
+        move, 
+        simHands, 
+        seeds, 
+        index, 
+        players,
+        skipSearch));
   }
 
   hle::HanabiMove bestMove = bpMove;

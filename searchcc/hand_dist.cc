@@ -339,6 +339,7 @@ void updateBelief(
     HandDistribution& handDist,
     int numThread,
     bool skipCounterfactual) {
+  printf("updateBelief() hand_dist.cc ======\n");
   assert((lastMove == nullptr) == (handDist.size() == 0));
   if (lastMove == nullptr) {
     // init belief
@@ -374,6 +375,7 @@ void updateBelief(
     std::cout << info << ", size: " << before << "->" << after << std::endl;
     assert(handInBelief(myHand, handDist));
 
+    printf("skipCounterfactual: %d\n", skipCounterfactual);
     if (lastMove->player != 0 && !skipCounterfactual) {
       // filter hands that contradict with partner's move
       assert(prevState != nullptr);

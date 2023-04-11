@@ -45,6 +45,7 @@ def run_search(args):
     actors[args.search_player].set_partners(actors)
 
     moves, score = run(
+        args,
         args.game_seed,
         actors,
         args.search_player,
@@ -82,7 +83,9 @@ def load_model(weight, sad_legacy, device):
     return model, config
 
 
-def run(seed, actors, search_actor_idx, num_search, threshold, num_thread):
+def run(args, seed, actors, search_actor_idx, num_search, threshold, num_thread):
+    # adhoc_teamplay = args.test_partner_weight != None
+    adhoc_teamplay = False
     params = {
         "players": str(len(actors)),
         "seed": str(seed),
@@ -101,7 +104,7 @@ def run(seed, actors, search_actor_idx, num_search, threshold, num_thread):
 
         if not args.skip_search:
             print(f"\n---Actor {search_actor_idx} update belief---")
-            actors[search_actor_idx].update_belief(game, num_thread)
+            actors[search_actor_idx].update_belief(game, num_thread, adhoc_teamplay)
 
         for i, actor in enumerate(actors):
             print(f"\n---Actor {i} observe---")
